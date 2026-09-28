@@ -7,6 +7,7 @@
 <link rel="icon" type="image/png" href="assets/img/favicon-teste.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 
 <style>
 @font-face{font-family:'Sora';src:url('assets/fonts/Sora-Bold.ttf') format('truetype');font-weight:700;font-display:swap}
@@ -16,8 +17,8 @@
 .nav-logo-navy{display:none!important}
 
 :root{
-  --font:'Helvetica Neue',Helvetica,Arial,sans-serif;
-  --font-title:'Sora','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --font:'Inter',Arial,sans-serif;
+  --font-title:'Sora','Inter',Arial,sans-serif;
   --logo-bg:#3B96EA;
   --navy:#12328C;
   --sky:#59C6FE;
@@ -372,6 +373,22 @@ footer{background:var(--ink);padding:40px var(--pad-x);display:flex;align-items:
   .brief-choices span{width:100%}
   .brief-submit{width:100%;justify-self:stretch}
 }
+
+/* ---------- Tipografia: Sora bold em caixa normal nos rótulos, botões e navegação ---------- */
+.nav-links a,.nav-cta,.hero-eyebrow,.btn-primary,.btn-ghost,.hero-scroll,.section-label,.service-tag,.btn-link-dark,
+.project-cat,.eco-type,.eco-link,.contato-social a,.contato-cta,.footer-links a,.service-list li,.service-go,
+.brief-field label,.brief-q,.brief-submit,.brief-done a{
+  font-family:var(--font-title);font-weight:700;text-transform:none;letter-spacing:-.005em}
+.nav-links a{font-size:14px}
+.nav-cta{font-size:14px}
+.hero-eyebrow{font-size:15px;letter-spacing:0}
+.btn-primary,.btn-ghost,.contato-cta,.brief-submit,.brief-done a{font-size:15px}
+.btn-link-dark{font-size:14px}
+.hero-scroll{font-size:13px}
+.section-label{font-size:17px;letter-spacing:-.01em}
+.service-tag,.project-cat,.eco-type,.eco-link,.service-list li{font-size:13px}
+.service-go,.contato-social a,.footer-links a{font-size:14px}
+.brief-field label,.brief-q{font-size:14px}
 </style>
 </head>
 <body>

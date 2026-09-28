@@ -7,8 +7,8 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-title: "Sora", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font: "Inter", Arial, sans-serif;
+  --font-title: "Sora", "Inter", Arial, sans-serif;
   --logo-bg: #3B96EA;
   --navy: #12328C;
   --navy-2: #0E2870;
@@ -1093,3 +1093,27 @@ select.mini, input.mini { width: auto; padding: 4px 6px; font-size: 12px; height
   .prop-obj, .prop-n { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .dash, .viz-tip { display: none !important; }
 }
+
+/* ==========================================================
+   Tipografia: Sora bold em caixa normal nos elementos de ação e navegação.
+   Microrrótulos de dados (tags, campos, tabelas) seguem em Inter.
+   ========================================================== */
+.btn, .link, .back, .tab, .seg-btn, .nav-item, .kicker, .dash-toggle, .form-section, .rem-head,
+.kcol header strong, .kcol-title strong, .lstage, .pick span, .mbtn, .pain-preset, .lchan, .lnew, .lpains span,
+.stage-title strong, .card-head h2, .field-label, .ally-how summary, .mm-drop {
+  font-family: var(--font-title); font-weight: 700; text-transform: none; letter-spacing: -.005em; }
+.btn { font-size: 14px; }
+.btn-sm { font-size: 13px; }
+.link, .back, .dash-toggle, .field-label, .ally-how summary { font-size: 13px; }
+.tab, .seg-btn { font-size: 14px; }
+.seg-sm .seg-btn { font-size: 13px; }
+.nav-item { font-size: 14px; }
+.nav-item.active { color: var(--ink); }
+.kicker { font-size: 15px; letter-spacing: -.01em; }
+.form-section { font-size: 15px; letter-spacing: -.01em; }
+.rem-head { font-size: 14px; }
+.kcol header, .kcol-title strong { font-size: 14px; text-transform: none; letter-spacing: 0; }
+.lstage { font-size: 13px; }
+.pick span, .pain-preset { font-size: 13px; }
+.lchan, .lnew, .lpains span, .mbtn { font-size: 11px; letter-spacing: 0; }
+@media (max-width: 860px) { .lstage { font-size: 11px; letter-spacing: 0; } }
