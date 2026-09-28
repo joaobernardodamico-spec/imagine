@@ -21,7 +21,7 @@ export const DEMO = !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY;
 // ------------------------------------------------------------
 export const ROLES = {
   socio:     { label: 'Sócio',     desc: 'Acesso total: financeiro, equipe, metas.' },
-  comercial: { label: 'Comercial', desc: 'CRM, clientes, propostas e receitas.' },
+  comercial: { label: 'Comercial', desc: 'Leads, clientes, propostas e receitas.' },
   producao:  { label: 'Produção',  desc: 'Todos os projetos, processos e entregas.' },
   freela:    { label: 'Freela',    desc: 'Só os projetos em que foi escalado.' },
 };
@@ -33,7 +33,9 @@ export const ACCESS = {
   projetos:   ['socio', 'comercial', 'producao', 'freela'],
   contas:     ['socio', 'comercial', 'producao'],
   processos:  ['socio', 'comercial', 'producao', 'freela'],
-  crm:        ['socio', 'comercial'],
+  leads:      ['socio', 'comercial'],
+  posvenda:   ['socio', 'comercial'],
+  aliancas:   ['socio', 'comercial', 'producao'],
   financeiro: ['socio', 'comercial'],
   metas:      ['socio', 'comercial', 'producao'],
   agenda:     ['socio', 'comercial', 'producao', 'freela'],
@@ -162,19 +164,93 @@ export function stageTasksFor(stage, track) {
 }
 
 // ------------------------------------------------------------
-// CRM
+// Leads — funil de conversão
+// "perdido" não é coluna: sai do quadro e fica na lista de perdidos.
 // ------------------------------------------------------------
 export const LEAD_STAGES = [
-  { key: 'novo', name: 'Novo' },
-  { key: 'contato', name: 'Contato feito' },
-  { key: 'reuniao', name: 'Reunião' },
-  { key: 'proposta', name: 'Proposta enviada' },
-  { key: 'negociacao', name: 'Negociação' },
-  { key: 'ganho', name: 'Ganho' },
-  { key: 'perdido', name: 'Perdido' },
+  { key: 'base',     name: 'Base',     desc: 'Contato captado. Ainda não qualificado.' },
+  { key: 'mql',      name: 'MQL',      desc: 'Tem perfil e demonstrou interesse.' },
+  { key: 'sql',      name: 'SQL',      desc: 'Necessidade, orçamento e prazo confirmados.' },
+  { key: 'proposta', name: 'Proposta', desc: 'Proposta enviada, em negociação.' },
+  { key: 'venda',    name: 'Venda',    desc: 'Fechado. Vira conta e projeto.' },
+];
+export const LEAD_WON = 'venda';
+export const LEAD_LOST = 'perdido';
+
+// Etapas do CRM antigo → funil novo (o schema.sql faz o mesmo no banco)
+export const LEAD_STAGE_MIGRATION = { novo: 'base', contato: 'mql', reuniao: 'sql', negociacao: 'proposta', ganho: 'venda' };
+
+// Relacionamento = canal próximo e quente (gente que já conhece a IMAGINE).
+// Prospecção = empresas que nós fomos buscar (ex.: mapeadas no My Maps).
+export const LEAD_CHANNELS = ['Site', 'Indicação', 'Relacionamento', 'Instagram', 'LinkedIn', 'Prospecção', 'Outro'];
+
+// Mesma lista do briefing da página inicial
+export const LEAD_SEGMENTS = ['Alimentação', 'Moda', 'Saúde e bem-estar', 'Tecnologia', 'Educação', 'Imobiliário', 'Serviços', 'Indústria', 'Varejo', 'Marketing', 'Fotografia e vídeo', 'Automotivo'];
+
+export const COMPANY_SIZES = ['', 'MEI', 'Micro', 'Pequena', 'Média', 'Grande'];
+
+// ------------------------------------------------------------
+// Serviços — no fim, toda dor mapeada vira uma entrega de valor
+// partner: normalmente executado por uma aliança
+// ------------------------------------------------------------
+export const SERVICES = {
+  identidade: { label: 'Identidade visual e posicionamento', short: 'Identidade visual' },
+  web:        { label: 'Site e presença digital',            short: 'Site' },
+  marketing:  { label: 'Estratégia de vendas e marketing',   short: 'Estratégia' },
+  social:     { label: 'Social media e aplicações',          short: 'Social media' },
+  registro:   { label: 'Registro de marca (INPI)',           short: 'Registro de marca', partner: true },
+  outro:      { label: 'Outro',                              short: 'Outro' },
+};
+
+// Atalhos do mapa de dores (dor → serviço que resolve)
+export const PAIN_PRESETS = [
+  ['Marca não registrada no INPI', 'registro'],
+  ['Site inexistente', 'web'],
+  ['Linktree / links desfuncionais', 'web'],
+  ['Site desatualizado ou lento', 'web'],
+  ['Identidade visual vencida ou defasada', 'identidade'],
+  ['Marca sem posicionamento claro', 'identidade'],
+  ['Redes sociais sem padrão visual', 'social'],
+  ['Sem aplicações da marca (papelaria, materiais)', 'social'],
+  ['Sem estratégia de vendas / captação', 'marketing'],
 ];
 
-export const LEAD_SOURCES = ['Indicação', 'Instagram', 'LinkedIn', 'Site', 'Evento', 'Outbound', 'Outro'];
+// Qualificação BANT
+export const BANT = [
+  { key: 'orcamento',   label: 'Orçamento',   hint: 'Quanto pode investir? Já tem verba?' },
+  { key: 'autoridade',  label: 'Autoridade',  hint: 'Quem decide? Quem mais participa?' },
+  { key: 'necessidade', label: 'Necessidade', hint: 'O que dói hoje, nas palavras do cliente.' },
+  { key: 'prazo',       label: 'Prazo',       hint: 'Quando precisa estar pronto? Por quê?' },
+];
+
+// ------------------------------------------------------------
+// Pós-venda / relacionamento — carteira de clientes
+// ------------------------------------------------------------
+export const CARE_STAGES = [
+  { key: 'implementacao',  name: 'Implementação',       desc: 'Projeto entregue, cliente colocando em uso.' },
+  { key: 'manutencao',     name: 'Manutenção',          desc: 'Suporte ou contrato recorrente.' },
+  { key: 'relacionamento', name: 'Relacionamento',      desc: 'Sem projeto ativo. Contato periódico.' },
+  { key: 'quente',         name: 'Oportunidade quente', desc: 'Disponível para um novo projeto.' },
+  { key: 'adormecido',     name: 'Adormecido',          desc: 'Sem contato há tempo. Reativar.' },
+];
+export const CARE_COLD_DAYS = 30;   // sem contato há mais que isso = alerta
+
+// ------------------------------------------------------------
+// Alianças — parceiros que entram nos projetos e nas propostas
+// ------------------------------------------------------------
+export const ALLIANCE_MODELS = {
+  indicacao:   'Indicação (cliente contrata direto)',
+  subcontrato: 'Subcontratação (entra no nosso orçamento)',
+  coentrega:   'Co-entrega (dividimos o projeto)',
+};
+
+// Diário de processo por etapa — receita de bolo
+export const JOURNAL = [
+  { key: 'feito',   label: 'O que foi feito',       hint: 'Em tópicos curtos.' },
+  { key: 'decisao', label: 'Decisão e por quê',     hint: 'O que escolhemos e o motivo.' },
+  { key: 'refs',    label: 'Referências e links',   hint: 'Arquivos, sites, imagens.' },
+  { key: 'proximo', label: 'Próximo passo',         hint: 'O que destrava a próxima etapa.' },
+];
 
 // ------------------------------------------------------------
 // Gamificação

@@ -1,6 +1,6 @@
 // Regras de negócio: permissões, projetos/etapas/tarefas, CRM, metas.
 import { store } from './store.js';
-import { ACCESS, STAGES, LEAD_STAGES, stageTasksFor, XP } from './config.js';
+import { ACCESS, STAGES, LEAD_STAGES, LEAD_WON, LEAD_LOST, stageTasksFor, XP } from './config.js';
 import { award, revoke } from './game.js';
 import { celebrate, toast, inMonth, today } from './util.js';
 
@@ -62,6 +62,7 @@ export async function createProject(v) {
     objective: v.objective || '', start_date: v.start_date || today(), due_date: v.due_date || null,
     value: v.value || 0, briefing: v.objective ? { objetivo: v.objective } : {}, briefing_done: false,
     cover_color: v.cover_color || null, cover_url: v.cover_url || null, created_by: me().id,
+    alliances: v.alliances || [], reminders: v.reminders || [],
   });
   await store.insertMany('stages', STAGES.map((s, i) => ({
     project_id: p.id, key: s.key, n: s.n, status: i === 0 ? 'andamento' : 'pendente', done_at: null, done_by: null,
@@ -159,7 +160,7 @@ export function myOpenTasks(userId = me()?.id) {
 }
 
 // ------------------------------------------------------------
-// CRM
+// Leads
 // ------------------------------------------------------------
 
 export async function moveLead(lead, stage) {
@@ -167,16 +168,16 @@ export async function moveLead(lead, stage) {
   const from = LEAD_STAGES.findIndex(s => s.key === lead.stage);
   const to = LEAD_STAGES.findIndex(s => s.key === stage);
   const patch = { stage };
-  if (stage === 'ganho') patch.won_at = new Date().toISOString();
-  if (lead.stage === 'ganho' && stage !== 'ganho') { patch.won_at = null; await revoke('lead_won', lead.id); }
+  if (stage === LEAD_WON) patch.won_at = new Date().toISOString();
+  if (lead.stage === LEAD_WON && stage !== LEAD_WON) { patch.won_at = null; await revoke('lead_won', lead.id); }
   await store.update('leads', lead.id, patch);
   const owner = lead.owner_id || me().id;
-  if (stage === 'ganho') {
+  if (stage === LEAD_WON) {
     const xp = await award(owner, 'lead_won', `Venda: ${lead.company || lead.name}`, lead.id);
     celebrate('Venda fechada!', lead.company || lead.name, xp, 'Novo cliente');
     return 'won';
   }
-  if (to > from && stage !== 'perdido') {
+  if (to > from && stage !== LEAD_LOST) {
     const xp = await award(owner, 'lead_advanced', `${lead.company || lead.name} → ${LEAD_STAGES[to].name}`, lead.id + ':' + stage);
     toast(`${lead.company || lead.name} avançou para ${LEAD_STAGES[to].name}`, { kind: 'success', xp });
   }
@@ -185,11 +186,18 @@ export async function moveLead(lead, stage) {
 export async function leadToAccount(lead) {
   if (lead.account_id && account(lead.account_id)) return account(lead.account_id);
   const a = await store.insert('accounts', {
-    kind: 'cliente', name: lead.company || lead.name, segment: '', contact_name: lead.name,
-    contact_email: lead.email || '', contact_phone: lead.phone || '', links: [], notes: lead.notes || '',
-    brand: { colors: [], fonts: [], tone: '', essence: '', dos: '', donts: '', logo_url: '', manual_url: '' },
+    kind: 'cliente', name: lead.company || lead.name, segment: lead.segment || '', contact_name: lead.name,
+    contact_email: lead.email || '', contact_phone: lead.phone || '', instagram: lead.instagram || '', links: [],
+    website: lead.website || '',
+    notes: [lead.razao_social ? `Razão social: ${lead.razao_social}` : '', lead.cnpj ? `CNPJ: ${lead.cnpj}` : '', lead.linkedin ? `LinkedIn: ${lead.linkedin}` : '', lead.notes || ''].filter(Boolean).join('\n'),
+    brand: { colors: [], fonts: [], tone: '', essence: '', dos: '', donts: '', logo_url: lead.logo_url || '', manual_url: '' },
   });
   await store.update('leads', lead.id, { account_id: a.id });
+  // Cliente novo entra na carteira de pós-venda
+  await store.insert('aftersales', {
+    account_id: a.id, lead_id: lead.id, title: 'Projeto em implementação', stage: 'implementacao',
+    value: 0, owner_id: lead.owner_id || me().id, last_contact: today(), next_action: '', next_date: null, notes: '',
+  }).catch(err => console.warn('pós-venda:', err.message));
   return a;
 }
 
@@ -211,7 +219,7 @@ export function metricActual(metric, month, userId = null) {
     case 'faturamento':
       return store.where('revenue', r => r.status === 'recebido' && inMonth(r.paid_at, month) && byUser(r, 'owner_id')).reduce((s, r) => s + Number(r.amount || 0), 0);
     case 'vendas':
-      return store.where('leads', l => l.stage === 'ganho' && inMonth(l.won_at, month) && byUser(l, 'owner_id')).reduce((s, l) => s + Number(l.value || 0), 0);
+      return store.where('leads', l => l.stage === LEAD_WON && inMonth(l.won_at, month) && byUser(l, 'owner_id')).reduce((s, l) => s + Number(l.value || 0), 0);
     case 'leads':
       return store.where('leads', l => inMonth(l.created_at, month) && byUser(l, 'owner_id')).length;
     case 'clientes':

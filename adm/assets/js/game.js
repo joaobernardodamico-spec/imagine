@@ -76,7 +76,7 @@ export function leaderboard({ month = thisMonth(), area = null } = {}) {
 
 export function salesOf(userId, month = thisMonth()) {
   return store.all('leads')
-    .filter(l => l.owner_id === userId && l.stage === 'ganho' && inMonth(l.won_at, month))
+    .filter(l => l.owner_id === userId && l.stage === 'venda' && inMonth(l.won_at, month))
     .reduce((s, l) => s + (Number(l.value) || 0), 0);
 }
 

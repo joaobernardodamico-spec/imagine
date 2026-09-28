@@ -2,7 +2,8 @@
 import { store } from '../store.js';
 import { ACCOUNT_KINDS } from '../config.js';
 import { role, seesMoney, isSocio, visibleProjects, npsScore } from '../ops.js';
-import { esc, icon, modal, money, empty, safeUrl } from '../util.js';
+import { esc, icon, modal, money, empty, safeUrl, thisMonth, inMonth } from '../util.js';
+import { kpi } from '../charts.js';
 import { pageHead, projectCard, kindTag, tabs } from './components.js';
 import { brandPanel, brandActions } from './brand.js';
 import { filesPanel, fileActions } from './files.js';
@@ -44,6 +45,7 @@ function list() {
   return `<div class="page">
     ${pageHead('Contas', 'Cada projeto pertence a uma conta. A conta guarda contato, manual de marca e arquivos que valem para todos os projetos dela.',
       canCreate ? `<button class="btn btn-primary" data-act="newAccount">${icon('plus')} Nova conta</button>` : '')}
+    ${accountsKpis(projects)}
     ${ORDER.map(k => {
       const accs = store.where('accounts', a => a.kind === k).sort((a, b) => a.name.localeCompare(b.name));
       return `<section class="kind-section">
@@ -66,6 +68,19 @@ function list() {
       </section>`;
     }).join('')}
   </div>`;
+}
+
+function accountsKpis(projects) {
+  const clients = store.where('accounts', a => a.kind === 'cliente');
+  const activeIds = new Set(projects.filter(p => p.status === 'ativo').map(p => p.account_id));
+  const m = thisMonth();
+  const nps = store.all('nps');
+  return `<div class="dash"><div class="dash-kpis">
+    ${kpi('Clientes', clients.length, { sub: `${clients.filter(a => inMonth(a.created_at, m)).length} novos no mês` })}
+    ${kpi('Com projeto ativo', clients.filter(a => activeIds.has(a.id)).length, { sub: `${clients.filter(a => !activeIds.has(a.id)).length} sem projeto agora` })}
+    ${kpi('Marcas do ecossistema', store.where('accounts', a => a.kind === 'ecossistema').length)}
+    ${seesMoney() ? kpi('NPS', nps.length ? npsScore(nps) : '—', { sub: `${nps.length} respostas` }) : ''}
+  </div></div>`;
 }
 
 function detail({ id, tab }) {

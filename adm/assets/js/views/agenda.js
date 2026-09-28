@@ -97,8 +97,8 @@ function collect(from, to) {
       .forEach(p => out.push({ id: 'p' + p.id, title: `Entrega: ${p.name}`, start: p.due_date, allDay: true, source: 'prazo', href: `#/projetos/${p.id}` }));
     store.where('tasks', t => !t.done && t.assignee_id === me().id && inRange(t.due_date))
       .forEach(t => out.push({ id: 't' + t.id, title: t.title, start: t.due_date, allDay: true, source: 'tarefa', href: `#/projetos/${t.project_id}/etapas` }));
-    if (can('crm')) store.where('leads', l => !['ganho', 'perdido'].includes(l.stage) && inRange(l.next_date))
-      .forEach(l => out.push({ id: 'l' + l.id, title: `${l.next_action || 'Follow-up'} · ${l.company || l.name}`, start: l.next_date, allDay: true, source: 'lead', href: '#/crm' }));
+    if (can('leads')) store.where('leads', l => !['venda', 'perdido'].includes(l.stage) && inRange(l.next_date))
+      .forEach(l => out.push({ id: 'l' + l.id, title: `${l.next_action || 'Follow-up'} · ${l.company || l.name}`, start: l.next_date, allDay: true, source: 'lead', href: '#/leads' }));
   }
   // Evento criado pelo Hub e espelhado no Google aparece uma vez só (a versão do Hub)
   const mirrored = new Set(store.all('events').map(e => e.google_id).filter(Boolean));

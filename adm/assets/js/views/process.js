@@ -91,15 +91,15 @@ export default {
       </div>
 
       <section class="card flow-card">
-        <div class="card-head"><h2>Fluxo comercial</h2><a class="link" href="#/crm">Abrir CRM ${icon('arrow', 14)}</a></div>
+        <div class="card-head"><h2>Fluxo comercial</h2><a class="link" href="#/leads">Abrir Leads ${icon('arrow', 14)}</a></div>
         <div class="flow flow-sales">
           <div class="phase-nodes">
-            ${LEAD_STAGES.filter(s => s.key !== 'perdido').map((s, i) => `<span class="node node-static ${s.key === 'ganho' ? 'node-win' : ''}"><span class="node-n">${i + 1}</span><span class="node-name">${esc(s.name)}</span></span>`).join('<span class="arrow" aria-hidden="true"></span>')}
+            ${LEAD_STAGES.map((s, i) => `<span class="node node-static ${s.key === 'venda' ? 'node-win' : ''}"><span class="node-n">${i + 1}</span><span class="node-name">${esc(s.name)}</span></span>`).join('<span class="arrow" aria-hidden="true"></span>')}
             <span class="arrow" aria-hidden="true"></span>
             <span class="node node-static node-handoff"><span class="node-n">${icon('folder', 14)}</span><span class="node-name">Vira conta + projeto → Etapa 1</span></span>
           </div>
         </div>
-        <p class="fine">Lead ganho vira conta de cliente com um clique no CRM, e o projeto já nasce com as 9 etapas.</p>
+        <p class="fine">Lead que chega em Venda vira conta de cliente com um clique, e o projeto já nasce com as 9 etapas. O briefing do site entra sozinho na Base.</p>
       </section>
     </div>`;
   },

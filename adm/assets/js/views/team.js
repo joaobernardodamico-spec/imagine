@@ -9,7 +9,7 @@ import { seed } from '../seed.js';
 import { uid } from '../store.js';
 
 const MODULE_LABEL = {
-  dashboard: 'Hoje', projetos: 'Projetos', contas: 'Contas', processos: 'Processos', crm: 'CRM',
+  dashboard: 'Hoje', projetos: 'Projetos', contas: 'Contas', processos: 'Processos', leads: 'Leads', posvenda: 'Pós-venda', aliancas: 'Alianças',
   financeiro: 'Financeiro', metas: 'Metas', agenda: 'Agenda', ranking: 'Ranking', equipe: 'Equipe', config: 'Config',
 };
 

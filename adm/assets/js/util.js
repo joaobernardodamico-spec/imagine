@@ -82,6 +82,19 @@ const P = {
   pin: 'M9 4h6l-1 6 3 3v1H7v-1l3-3zM12 14v7',
   eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 100-6 3 3 0 000 6z',
   refresh: 'M20 11a8 8 0 00-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0014.3 4.9L20 16M20 20v-4h-4',
+  globe: 'M12 21a9 9 0 100-18 9 9 0 000 18zM3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18',
+  instagram: 'M4 8a4 4 0 014-4h8a4 4 0 014 4v8a4 4 0 01-4 4H8a4 4 0 01-4-4zM12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM17 7h.01',
+  linkedin: 'M4 4h16v16H4zM8 10.5V16M8 7.5h.01M12 16v-5.5M12 13a2.5 2.5 0 015 0v3',
+  heart: 'M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z',
+  map: 'M9 4L3 6.5V20l6-2.5 6 2.5 6-2.5V4l-6 2.5zM9 4v13.5M15 6.5V20',
+  building: 'M4 21V5.5A1.5 1.5 0 015.5 4h8A1.5 1.5 0 0115 5.5V21M15 9h3.5a1.5 1.5 0 011.5 1.5V21M3 21h18M8 8h3M8 12h3M8 16h3',
+  handshake: 'M2 9l4-4 4 1.5L13 5l3 1 6 4-3 4M6 5l-4 4 6.5 6.5a1.5 1.5 0 002-2M10.5 15.5a1.5 1.5 0 002 2M12.5 17.5a1.5 1.5 0 002 0l4.5-3.5M13 5l-3.5 3.5a1.8 1.8 0 002.5 2.5L14 9l4 4',
+  image: 'M4 5.5A1.5 1.5 0 015.5 4h13A1.5 1.5 0 0120 5.5v13a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 18.5zM4 16l5-5 4 4 2-2 5 5M15.5 9.5h.01',
+  text: 'M5 6V4.5h14V6M12 4.5v15M9 19.5h6',
+  upload: 'M12 16V4M7 9l5-5 5 5M4 16v2.5A1.5 1.5 0 005.5 20h13a1.5 1.5 0 001.5-1.5V16',
+  download: 'M12 4v12M7 11l5 5 5-5M4 16v2.5A1.5 1.5 0 005.5 20h13a1.5 1.5 0 001.5-1.5V16',
+  bell: 'M6 16v-5a6 6 0 0112 0v5l1.5 2h-15zM10 20.5a2 2 0 004 0',
+  chart: 'M4 20h16M7 16v-5M12 16V6M17 16v-8',
 };
 
 export const icon = (name, size = 18) =>
@@ -121,7 +134,8 @@ export function celebrate(title, sub = '', xp = 0, kicker = 'Etapa concluída') 
 
 // ------------------------------------------------------------
 // Modal com formulário declarativo
-// fields: [{ name, label, type, options, value, required, placeholder, full, help }]
+// fields: [{ name, label, type, options, value, required, placeholder, full, help, list, prefix }]
+// { section: 'Título' } abre um bloco; type 'chips' vira botões de escolha única.
 // ------------------------------------------------------------
 export function modal({ title, fields = [], body = '', submit = 'Salvar', danger = null, onSubmit, wide = false }) {
   const root = document.getElementById('modal');
@@ -161,7 +175,12 @@ export function modal({ title, fields = [], body = '', submit = 'Salvar', danger
       if (!el) continue;
       let v = f.type === 'checkbox' ? el.checked : el.value.trim();
       if (f.type === 'number' || f.type === 'money') v = v === '' ? null : Number(String(v).replace(',', '.'));
-      if (f.required && (v === '' || v === null)) { el.focus(); el.classList.add('invalid'); return; }
+      if (f.required && (v === '' || v === null)) {
+        const box = el.classList ? el : el[0]?.closest('.picks');   // RadioNodeList nos chips
+        box?.classList.add('invalid');
+        (el.focus ? el : el[0])?.focus();
+        return;
+      }
       values[f.name] = v === '' ? null : v;
     }
     const btn = form.querySelector('[type=submit]');
@@ -206,6 +225,8 @@ export function shrinkImage(file, max = 960, quality = .8) {
 }
 
 function fieldHTML(f) {
+  if (f.section) return `<div class="form-section">${esc(f.section)}${f.hint ? `<small>${esc(f.hint)}</small>` : ''}</div>`;
+  if (f.html) return `<div class="field full">${f.label ? `<label>${esc(f.label)}</label>` : ''}${f.html}</div>`;
   const v = f.value ?? '';
   const id = `f-${f.name}`;
   const req = f.required ? 'required' : '';
@@ -224,11 +245,18 @@ function fieldHTML(f) {
       <input type="hidden" name="${f.name}" value="${esc(v)}">
       <button type="button" class="btn btn-ghost btn-sm img-clear">Remover</button>
     </div>`;
+  } else if (f.type === 'chips') {
+    input = `<div class="picks" id="${id}" role="radiogroup">${(f.options || []).map(o => {
+      const [val, lab, ic] = Array.isArray(o) ? o : [o, o];
+      return `<label class="pick"><input type="radio" name="${f.name}" value="${esc(val)}" ${String(val) === String(v) ? 'checked' : ''}><span>${ic ? icon(ic, 14) : ''}${esc(lab)}</span></label>`;
+    }).join('')}</div>`;
   } else if (f.type === 'checkbox') {
     input = `<label class="check"><input type="checkbox" id="${id}" name="${f.name}" ${v ? 'checked' : ''}> ${esc(f.checkLabel || '')}</label>`;
   } else {
     const type = f.type === 'money' ? 'number' : (f.type || 'text');
-    input = `<input id="${id}" name="${f.name}" type="${type}" value="${esc(v)}" placeholder="${esc(f.placeholder || '')}" ${f.type === 'money' ? 'step="0.01" min="0"' : ''} ${req}>`;
+    const list = f.list ? `<datalist id="${id}-list">${f.list.map(o => `<option value="${esc(o)}">`).join('')}</datalist>` : '';
+    input = `<input id="${id}" name="${f.name}" type="${type}" value="${esc(v)}" placeholder="${esc(f.placeholder || '')}" ${f.type === 'money' ? 'step="0.01" min="0"' : ''} ${f.list ? `list="${id}-list"` : ''} ${req}>${list}`;
+    if (f.prefix) input = `<div class="input-ico">${icon(f.prefix, 16)}${input}</div>`;
   }
   return `<div class="field ${f.full || f.type === 'textarea' || f.type === 'image' ? 'full' : ''}">
     <label for="${id}">${esc(f.label)}${f.required ? ' <b>*</b>' : ''}</label>

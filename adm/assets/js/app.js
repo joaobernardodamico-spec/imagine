@@ -11,7 +11,10 @@ import board from './views/board.js';
 import project from './views/project.js';
 import accounts from './views/accounts.js';
 import process from './views/process.js';
-import crm from './views/crm.js';
+import leads from './views/leads.js';
+import lead from './views/lead.js';
+import aftersales from './views/aftersales.js';
+import alliances from './views/alliances.js';
 import finance from './views/finance.js';
 import goals from './views/goals.js';
 import agenda from './views/agenda.js';
@@ -24,10 +27,12 @@ const NAV = [
   { path: 'painel',     mod: 'painel',     label: 'Painel',     icon: 'grid',     view: board },
   { path: 'projetos',   mod: 'projetos',   label: 'Projetos',   icon: 'folder',   view: projects },
   { path: 'contas',     mod: 'contas',     label: 'Contas',     icon: 'layers',   view: accounts },
+  { path: 'leads',      mod: 'leads',      label: 'Leads',      icon: 'funnel',   view: leads },
+  { path: 'posvenda',   mod: 'posvenda',   label: 'Pós-venda',  icon: 'heart',    view: aftersales },
+  { path: 'aliancas',   mod: 'aliancas',   label: 'Alianças',   icon: 'handshake', view: alliances },
   { path: 'processos',  mod: 'processos',  label: 'Processos',  icon: 'flow',     view: process },
   { path: 'agenda',     mod: 'agenda',     label: 'Agenda',     icon: 'calendar', view: agenda },
   { group: 'Negócio' },
-  { path: 'crm',        mod: 'crm',        label: 'CRM',        icon: 'funnel',   view: crm },
   { path: 'financeiro', mod: 'financeiro', label: 'Financeiro', icon: 'wallet',   view: finance },
   { path: 'metas',      mod: 'metas',      label: 'Metas',      icon: 'target',   view: goals },
   { group: 'Time' },
@@ -47,8 +52,10 @@ function resolve() {
   const [head = '', ...rest] = parts;
   const PROJECT_FILTERS = ['todos', 'cliente', 'ecossistema', 'imagine'];
   if (head === 'projetos' && rest[0] && !PROJECT_FILTERS.includes(rest[0])) return { view: project, mod: 'projetos', params: { id: rest[0], tab: rest[1] || 'visao' } };
+  if (head === 'leads' && rest[0]) return { view: lead, mod: 'leads', params: { id: rest[0], tab: rest[1] || 'resumo' } };
   if (head === 'contas' && rest[0]) return { view: accounts, mod: 'contas', params: { id: rest[0], tab: rest[1] || 'marca' } };
-  const item = NAV.find(n => n.path === head) || NAV[1];
+  const path = head === 'crm' ? 'leads' : head;   // link antigo do CRM
+  const item = NAV.find(n => n.path === path) || NAV[1];
   return { view: item.view, mod: item.mod, params: { sub: rest[0] || null } };
 }
 

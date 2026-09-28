@@ -682,6 +682,9 @@ document.querySelectorAll('.carousel').forEach(car => {
   const msg = document.getElementById('briefMsg');
   const done = document.getElementById('briefDone');
   const TO = 'admin@imagineconcept.com.br';
+  // Mesmo Supabase do Hub (/adm). Chave pública: o banco só aceita a função submit_site_lead,
+  // que joga o briefing na etapa Base do funil de Leads.
+  const HUB = { url: 'https://qfjkzagivvbltgmjnhzf.supabase.co', key: 'sb_publishable_LtbqK7q10GkVp9liWU561w_FAugEYwo' };
 
   // "Quero esta solução" pré-marca a opção no briefing
   document.querySelectorAll('[data-solucao]').forEach(a => a.addEventListener('click', () => {
@@ -725,13 +728,26 @@ document.querySelectorAll('.carousel').forEach(car => {
     };
     const btn = form.querySelector('.brief-submit');
     btn.disabled = true; btn.textContent = 'Enviando...';
-    try {
-      const r = await fetch('https://formsubmit.co/ajax/' + TO, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ ...data, _subject: 'Novo briefing: ' + data.Empresa, _template: 'table', _replyto: data['E-mail'] })
-      });
+    const lead = {
+      nome: fd.get('nome'), empresa: fd.get('empresa'), email: fd.get('email'), whatsapp: fd.get('whatsapp'),
+      cnpj: fd.get('cnpj') || '', segmento: fd.get('segmento') || '',
+      solucao: fd.getAll('solucao'), prazo: fd.get('prazo') || '', descricao: fd.get('descricao') || ''
+    };
+    // Vai para o e-mail e, em paralelo, para o funil de Leads do Hub. Basta um dos dois chegar.
+    const toMail = fetch('https://formsubmit.co/ajax/' + TO, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ ...data, _subject: 'Novo briefing: ' + data.Empresa, _template: 'table', _replyto: data['E-mail'] })
+    }).then(async r => {
       const j = await r.json().catch(() => ({}));
       if (!r.ok || String(j.success) === 'false') throw new Error(j.message || r.status);
+    });
+    const toHub = fetch(HUB.url + '/rest/v1/rpc/submit_site_lead', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', apikey: HUB.key },
+      body: JSON.stringify({ p: lead })
+    }).then(r => { if (!r.ok) throw new Error('hub ' + r.status); });
+    try {
+      const sent = await Promise.allSettled([toMail, toHub]);
+      if (sent.every(s => s.status === 'rejected')) throw sent[0].reason;
       form.style.display = 'none'; done.style.display = 'block';
       done.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (err) {

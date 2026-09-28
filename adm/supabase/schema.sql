@@ -336,3 +336,197 @@ alter table tasks add column if not exists activity jsonb not null default '[]';
 
 alter table events add column if not exists google_id text;
 alter table projects add column if not exists cover_url text;
+
+-- ---------- Leads: funil Base → MQL → SQL → Proposta → Venda ----------
+alter table leads add column if not exists cnpj text default '';
+alter table leads add column if not exists segment text default '';
+alter table leads add column if not exists instagram text default '';
+alter table leads add column if not exists linkedin text default '';
+alter table leads add column if not exists briefing jsonb not null default '{}';
+alter table leads alter column stage set default 'base';
+
+-- etapas do CRM antigo → funil novo ('perdido' continua igual)
+update leads set stage = case stage
+  when 'novo' then 'base' when 'contato' then 'mql' when 'reuniao' then 'sql'
+  when 'negociacao' then 'proposta' when 'ganho' then 'venda' end
+where stage in ('novo','contato','reuniao','negociacao','ganho');
+
+-- Briefing da página inicial → etapa Base. O site usa a chave pública (anon),
+-- que NÃO lê nem escreve em leads: só consegue chamar esta função.
+create or replace function submit_site_lead(p jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_email text := lower(trim(coalesce(p->>'email', '')));
+begin
+  if coalesce(trim(p->>'nome'), '') = '' or coalesce(trim(p->>'empresa'), '') = '' or v_email !~ '^\S+@\S+\.\S+$' then
+    raise exception 'Briefing incompleto';
+  end if;
+  -- clique duplo / reenvio: ignora o mesmo e-mail nos últimos 10 minutos
+  if exists (select 1 from leads where lower(email) = v_email and created_at > now() - interval '10 minutes') then
+    return;
+  end if;
+  insert into leads (name, company, email, phone, cnpj, segment, source, stage, notes, briefing)
+  values (
+    left(trim(p->>'nome'), 120), left(trim(p->>'empresa'), 160), left(v_email, 160),
+    left(coalesce(p->>'whatsapp', ''), 40), left(coalesce(p->>'cnpj', ''), 20), left(coalesce(p->>'segmento', ''), 80),
+    'Site', 'base', '',
+    jsonb_build_object(
+      'solucao', case when jsonb_typeof(p->'solucao') = 'array' then p->'solucao' else '[]'::jsonb end,
+      'prazo', left(coalesce(p->>'prazo', ''), 40),
+      'descricao', left(coalesce(p->>'descricao', ''), 4000))
+  );
+end $$;
+
+revoke all on function submit_site_lead(jsonb) from public;
+grant execute on function submit_site_lead(jsonb) to anon, authenticated;
+
+-- ============================================================
+-- Leads completos, alianças, pós-venda, rascunho (moodboard),
+-- lembretes e diário de etapa
+-- ============================================================
+alter table leads add column if not exists razao_social text default '';
+alter table leads add column if not exists size text default '';
+alter table leads add column if not exists website text default '';
+alter table leads add column if not exists city text default '';
+alter table leads add column if not exists uf text default '';
+alter table leads add column if not exists address text default '';
+alter table leads add column if not exists lat double precision;
+alter table leads add column if not exists lng double precision;
+alter table leads add column if not exists role_title text default '';
+alter table leads add column if not exists referral text default '';
+alter table leads add column if not exists logo_url text default '';
+alter table leads add column if not exists bant jsonb not null default '{}';
+alter table leads add column if not exists pains jsonb not null default '[]';
+alter table leads add column if not exists proposal jsonb not null default '{}';
+
+alter table projects add column if not exists alliances jsonb not null default '[]';
+alter table projects add column if not exists reminders jsonb not null default '[]';
+alter table stages add column if not exists journal jsonb not null default '{}';
+
+create table if not exists alliances (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  service text default 'outro',
+  area text default '',
+  model text default 'indicacao',
+  commission text default '',
+  contact_name text default '',
+  contact_role text default '',
+  email text default '',
+  phone text default '',
+  website text default '',
+  instagram text default '',
+  logo_url text default '',
+  how text default '',
+  notes text default '',
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists aftersales (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid references accounts(id) on delete cascade,
+  lead_id uuid references leads(id) on delete set null,
+  title text default '',
+  stage text not null default 'implementacao',
+  value numeric(12,2) default 0,
+  owner_id uuid references profiles(id) on delete set null,
+  last_contact date,
+  next_action text default '',
+  next_date date,
+  notes text default '',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists moodboard (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  url text not null,
+  title text default '',
+  source text default '',
+  note text default '',
+  sort int default 0,
+  created_by uuid references profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists moodboard_project_idx on moodboard(project_id);
+
+do $$
+declare t text; p record;
+begin
+  foreach t in array array['alliances','aftersales','moodboard'] loop
+    execute format('alter table %I enable row level security', t);
+    for p in select policyname from pg_policies where schemaname = 'public' and tablename = t loop
+      execute format('drop policy if exists %I on %I', p.policyname, t);
+    end loop;
+  end loop;
+end $$;
+
+-- alianças: equipe interna vê; comercial/sócio cadastram
+create policy alliances_read  on alliances for select to authenticated using (is_staff());
+create policy alliances_write on alliances for all to authenticated using (is_sales()) with check (is_sales());
+-- pós-venda: comercial e sócio
+create policy aftersales_all on aftersales for all to authenticated using (is_sales()) with check (is_sales());
+-- rascunho: quem vê o projeto, usa o quadro
+create policy moodboard_all on moodboard for all to authenticated using (can_see_project(project_id)) with check (can_see_project(project_id));
+
+-- ---------- aliança: Doma Marcas ----------
+insert into alliances (name, service, area, model, how)
+select 'Doma Marcas', 'registro', 'Registro de marcas e patentes no INPI', 'indicacao',
+  E'1. No lead, mapear a dor "marca não registrada no INPI".\n2. Na proposta, incluir a entrega "Registro de marca (INPI)" em aliança com a Doma.\n3. Aprovado: enviar à Doma nome da marca, CNPJ, logo final e atividades do cliente.\n4. Acompanhar o protocolo nos lembretes do projeto.'
+where not exists (select 1 from alliances where name = 'Doma Marcas');
+
+-- ---------- leads reais ----------
+do $$
+declare
+  v_owner uuid := (select id from profiles where role = 'socio' order by created_at limit 1);
+  v_doma text := (select id::text from alliances where name = 'Doma Marcas' limit 1);
+begin
+  -- Arctia: relacionamento próximo e quente
+  if not exists (select 1 from leads where company = 'Arctia Marketing') then
+    insert into leads (name, role_title, company, cnpj, segment, source, stage, owner_id, logo_url, referral, notes, pains, bant, briefing, proposal)
+    values ('Alexandra', 'CEO e Founder', 'Arctia Marketing', '38.035.140/0001-78', 'Marketing', 'Relacionamento', 'mql', v_owner,
+      'assets/img/leads/arctia.png', 'Relacionamento próximo e quente',
+      'Arctia · "Transformação para o seu negócio". Canal extremamente próximo e quente.',
+      jsonb_build_array(
+        jsonb_build_object('dor', 'Marca não registrada no INPI', 'service', 'registro', 'alliance_id', v_doma),
+        jsonb_build_object('dor', 'Site inexistente; Linktree desfuncional', 'service', 'web', 'alliance_id', null),
+        jsonb_build_object('dor', 'Identidade visual vencida / defasada', 'service', 'identidade', 'alliance_id', null),
+        jsonb_build_object('dor', 'Social media e aplicações da marca', 'service', 'social', 'alliance_id', null)),
+      jsonb_build_object('autoridade', 'Alexandra (CEO e Founder) decide'), '{}', '{}');
+  end if;
+
+  -- Imagine Imóveis (SP): oferecer as 3 soluções
+  if not exists (select 1 from leads where company = 'Imagine Imóveis') then
+    insert into leads (name, company, segment, website, city, uf, source, stage, owner_id, notes, pains, bant, briefing, proposal)
+    values ('Contato a definir', 'Imagine Imóveis', 'Imobiliário', 'imagine.com.br', 'São Paulo', 'SP', 'Prospecção', 'base', v_owner,
+      'Oferecer as 3 soluções: identidade visual, estratégia de vendas e site.',
+      jsonb_build_array(
+        jsonb_build_object('dor', 'A validar: identidade e posicionamento da marca', 'service', 'identidade', 'alliance_id', null),
+        jsonb_build_object('dor', 'A validar: estratégia de vendas e captação digital', 'service', 'marketing', 'alliance_id', null),
+        jsonb_build_object('dor', 'A validar: site com captação de clientes', 'service', 'web', 'alliance_id', null)),
+      '{}', '{}', '{}');
+  end if;
+
+  -- The Lightz: fotógrafo, videomaker e designer
+  if not exists (select 1 from leads where company = 'The Lightz') then
+    insert into leads (name, company, segment, instagram, source, stage, owner_id, logo_url, notes, pains, bant, briefing, proposal)
+    values ('Contato a definir', 'The Lightz', 'Fotografia e vídeo', 'https://www.instagram.com/_thelightz/', 'Prospecção', 'base', v_owner,
+      'assets/img/leads/thelightz.png', 'Fotógrafo, videomaker e designer. Hoje a presença digital é só Instagram + Linktree.',
+      jsonb_build_array(
+        jsonb_build_object('dor', 'Identidade visual', 'service', 'identidade', 'alliance_id', null),
+        jsonb_build_object('dor', 'Sem site / portfólio próprio (depende de Linktree)', 'service', 'web', 'alliance_id', null)),
+      '{}', '{}', '{}');
+  end if;
+
+  -- Box911: site e apenas logo
+  if not exists (select 1 from leads where company = 'Box911') then
+    insert into leads (name, company, segment, website, source, stage, owner_id, logo_url, notes, pains, bant, briefing, proposal)
+    values ('Contato a definir', 'Box911', 'Automotivo', 'https://box911.com.br', 'Prospecção', 'base', v_owner,
+      'assets/img/leads/box911.png', 'Oferecer site e apenas o logo (não a identidade completa).',
+      jsonb_build_array(
+        jsonb_build_object('dor', 'Site', 'service', 'web', 'alliance_id', null),
+        jsonb_build_object('dor', 'Logo (apenas o logo)', 'service', 'identidade', 'alliance_id', null)),
+      '{}', '{}', '{}');
+  end if;
+end $$;

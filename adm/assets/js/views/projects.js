@@ -1,11 +1,12 @@
 // Projetos — separados de forma explícita em Clientes, Ecossistema e IMAGINE.
 import { store } from '../store.js';
-import { ACCOUNT_KINDS, TRACKS } from '../config.js';
-import { visibleProjects, projectKind, createProject, role, seesMoney, account } from '../ops.js';
-import { esc, icon, modal, empty, today } from '../util.js';
+import { ACCOUNT_KINDS, TRACKS, STAGES } from '../config.js';
+import { visibleProjects, projectKind, createProject, role, seesMoney, account, progressOf } from '../ops.js';
+import { esc, icon, modal, empty, today, money, thisMonth, inMonth } from '../util.js';
 import { projectCard, pageHead } from './components.js';
+import { hbars, kpi, panel, dashboard } from '../charts.js';
 
-const state = { kind: 'todos', status: 'ativo', q: '' };
+const state = { kind: 'todos', status: 'ativo', q: '', dash: true };
 
 const KIND_ORDER = ['cliente', 'ecossistema', 'imagine'];
 
@@ -22,6 +23,8 @@ export default {
     return `<div class="page">
       ${pageHead('Projetos', 'Tudo o que a IMAGINE está construindo, separado pelo que cada coisa é.',
         canCreate ? `<button class="btn btn-primary" data-act="newProject">${icon('plus')} Novo projeto</button>` : '')}
+
+      ${projectsDashboard(all)}
 
       ${ecoMap(byStatus)}
 
@@ -47,10 +50,34 @@ export default {
 
   actions: {
     newProject() { newProjectModal(); },
+    toggleDash() { state.dash = !state.dash; store.emit({}); },
     status(el) { state.status = el.value; store.emit({}); },
     search(el) { state.q = el.value; filterCards(document.getElementById('view'), el.value); },
   },
 };
+
+function projectsDashboard(all) {
+  const m = thisMonth();
+  const act = all.filter(p => p.status === 'ativo');
+  const delivered = all.filter(p => p.status === 'entregue' && inMonth(p.delivered_at, m));
+  const late = act.filter(p => p.due_date && p.due_date < today());
+  const rem = act.reduce((s, p) => s + (p.reminders || []).filter(r => !r.done).length, 0);
+  const kpis = [
+    kpi('Em andamento', act.length, { sub: late.length ? `${late.length} atrasado${late.length > 1 ? 's' : ''}` : 'nenhum atrasado', delta: late.length ? -late.length : null, deltaText: late.length ? 'atenção aos prazos' : '' }),
+    kpi('Entregues no mês', delivered.length),
+    ...(seesMoney() ? [kpi('Valor em produção', money(act.reduce((s, p) => s + Number(p.value || 0), 0)), { sub: 'soma dos projetos ativos' })] : []),
+    kpi('Lembretes pendentes', rem, { sub: 'nos projetos ativos' }),
+  ].join('');
+  const where = STAGES.map(s => ({ label: `${s.n}. ${s.name}`, value: act.filter(p => progressOf(p.id).current?.key === s.key).length }));
+  const byTrack = Object.entries(TRACKS).map(([k, l]) => ({ label: l, value: act.filter(p => p.track === k).length })).filter(r => r.value);
+  const byKind = KIND_ORDER.map(k => ({ label: ACCOUNT_KINDS[k].label, value: act.filter(p => projectKind(p) === k).length }));
+  const cards = [
+    panel('Onde os projetos estão', hbars(where, { fmt: v => `${v}`, empty: 'Nenhum projeto ativo.' }), { hint: 'Etapa atual de cada projeto ativo' }),
+    panel('Por trilha', hbars(byTrack, { fmt: v => `${v}` })),
+    panel('Por tipo de conta', hbars(byKind, { fmt: v => `${v}` })),
+  ].join('');
+  return dashboard({ open: state.dash, kpis, cards });
+}
 
 function ecoMap(projects) {
   const n = k => projects.filter(p => projectKind(p) === k).length;
@@ -118,7 +145,7 @@ export function newProjectModal(prefill = {}) {
     ],
     submit: 'Criar projeto',
     async onSubmit(v) {
-      const p = await createProject({ ...v, members: v.member ? [v.member] : [] });
+      const p = await createProject({ ...v, members: v.member ? [v.member] : [], alliances: prefill.alliances || [] });
       location.hash = `#/projetos/${p.id}`;
     },
   });

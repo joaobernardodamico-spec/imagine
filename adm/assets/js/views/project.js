@@ -11,6 +11,9 @@ import { kindTag, tabs } from './components.js';
 import { openTask } from './task.js';
 import { brandPanel, brandActions } from './brand.js';
 import { filesPanel, fileActions } from './files.js';
+import { moodPanel, moodActions, wireMood, moodItems, journalSummary } from './moodboard.js';
+import { uid } from '../store.js';
+import { SERVICES } from '../config.js';
 
 const open = {}; // etapa expandida por projeto
 
@@ -44,7 +47,7 @@ export default {
     const nFiles = store.where('files', f => f.project_id === p.id).length;
 
     const TABS = [
-      ['visao', 'Visão geral'], ['etapas', 'Etapas', `${pr.doneStages}/9`], ['briefing', 'Briefing'],
+      ['visao', 'Visão geral'], ['etapas', 'Etapas', `${pr.doneStages}/9`], ['rascunho', 'Rascunho', moodItems(p.id).length || null], ['briefing', 'Briefing'],
       ['marca', 'Marca'], ['arquivos', 'Arquivos', nFiles], ['notas', 'Notas', nNotes], ['equipe', 'Equipe'],
       ...(seesMoney() ? [['financeiro', 'Financeiro']] : []),
     ];
@@ -70,15 +73,50 @@ export default {
         </div>
       </header>
 
+      ${reminders(p, edit)}
       ${pipeline(p, pr)}
       ${tabs(TABS, tab, `projetos/${p.id}`)}
       <div class="tab-panel">${panel(tab, p, a, edit)}</div>
     </div>`;
   },
 
+  after(root, { id, tab }) {
+    if (tab === 'rascunho' && canEditProject(store.find('projects', id) || {})) wireMood(root, id);
+  },
+
   actions: {
     ...brandActions,
     ...fileActions,
+    ...moodActions,
+
+    // Lembretes: checklist rápido que aparece ao abrir o projeto
+    async addReminder(form, e, { id }) {
+      const text = form.text.value.trim();
+      if (!text) return;
+      const p = store.find('projects', id);
+      await store.update('projects', id, { reminders: [...(p.reminders || []), { id: uid(), text, done: false, by: me().id, at: new Date().toISOString() }] });
+      setTimeout(() => document.querySelector('.rem-add input')?.focus(), 30);
+    },
+    async toggleReminder(el, e, { id }) {
+      const p = store.find('projects', id);
+      await store.update('projects', id, { reminders: (p.reminders || []).map(r => r.id === el.dataset.id ? { ...r, done: !r.done, done_by: r.done ? null : me().id } : r) });
+    },
+    async delReminder(el, e, { id }) {
+      const p = store.find('projects', id);
+      await store.update('projects', id, { reminders: (p.reminders || []).filter(r => r.id !== el.dataset.id) });
+    },
+    toggleDoneReminders() { showDoneRem = !showDoneRem; store.emit({}); },
+
+    // Alianças acionadas no projeto
+    async addAlliance(el, e, { id }) {
+      if (!el.value) return;
+      const p = store.find('projects', id);
+      await store.update('projects', id, { alliances: [...new Set([...(p.alliances || []), el.value])] });
+    },
+    async removeAlliance(el, e, { id }) {
+      const p = store.find('projects', id);
+      await store.update('projects', id, { alliances: (p.alliances || []).filter(x => x !== el.dataset.id) });
+    },
 
     toggleTask(el) { const t = store.find('tasks', el.dataset.id); if (t) toggleTask(t); },
     openTask(el) { openTask(el.dataset.id); },
@@ -168,6 +206,7 @@ function pipeline(p, pr) {
 function panel(tab, p, a, edit) {
   switch (tab) {
     case 'etapas': return stagesPanel(p, edit);
+    case 'rascunho': return moodPanel(p, edit);
     case 'briefing': return briefingPanel(p, edit);
     case 'marca': return a ? `${brandPanel(a, { editable: edit })}<p class="fine">O manual pertence à conta <a href="#/contas/${esc(a.id)}">${esc(a.name)}</a> e é compartilhado entre todos os projetos dela.</p>` : '';
     case 'arquivos': return filesPanel({ project_id: p.id, account_id: p.account_id });
@@ -207,9 +246,44 @@ function overview(p, a) {
         <div class="card-head"><h2>Equipe</h2></div>
         <div class="team-inline">${team.map(m => { const u = profile(m.user_id); return u ? `<span class="person">${avatar(u, 28)}<span>${esc(u.name.split(' ')[0])}<small>${esc(PROJECT_ROLES[m.role] || m.role)}</small></span></span>` : ''; }).join('')}</div>
       </section>
+      ${alliancesCard(p)}
       ${pinned.length ? `<section class="card"><div class="card-head"><h2>Notas fixadas</h2></div>${pinned.map(n => `<blockquote class="note-pin">${esc(n.body)}</blockquote>`).join('')}</section>` : ''}
     </div>
   </div>`;
+}
+
+// Lembretes no topo do projeto: o que não pode ser esquecido
+let showDoneRem = false;
+function reminders(p, edit) {
+  const list = p.reminders || [];
+  const open = list.filter(r => !r.done);
+  const done = list.filter(r => r.done);
+  if (!list.length && !edit) return '';
+  return `<section class="reminders ${open.length ? 'has-open' : ''}">
+    <div class="rem-head">${icon('bell', 16)}<strong>Lembretes</strong><span class="count">${open.length}</span>
+      ${done.length ? `<button class="link" data-act="toggleDoneReminders">${showDoneRem ? 'Esconder' : 'Ver'} ${done.length} feito${done.length > 1 ? 's' : ''}</button>` : ''}</div>
+    <ul class="rem-list">${[...open, ...(showDoneRem ? done : [])].map(r => `<li class="${r.done ? 'done' : ''}">
+      <button class="checkbox" data-act="toggleReminder" data-id="${esc(r.id)}" aria-label="${r.done ? 'Desmarcar' : 'Concluir'}" ${edit ? '' : 'disabled'}>${icon('check', 14)}</button>
+      <span>${esc(r.text)}</span>
+      ${edit ? `<button class="icon-btn" data-act="delReminder" data-id="${esc(r.id)}" title="Excluir">${icon('x', 14)}</button>` : ''}
+    </li>`).join('')}</ul>
+    ${edit ? `<form class="rem-add" data-submit="addReminder"><input name="text" placeholder="Novo lembrete (Enter): pedir acessos, enviar contrato, confirmar fonte…" aria-label="Novo lembrete"></form>` : ''}
+  </section>`;
+}
+
+function alliancesCard(p) {
+  const ids = p.alliances || [];
+  const all = store.all('alliances');
+  const inP = ids.map(id => all.find(a => a.id === id)).filter(Boolean);
+  const rest = all.filter(a => a.active !== false && !ids.includes(a.id));
+  const edit = canEditProject(p);
+  if (!inP.length && !rest.length) return '';
+  return `<section class="card">
+    <div class="card-head"><h2>Alianças no projeto</h2><a class="link" href="#/aliancas">Alianças ${icon('arrow', 14)}</a></div>
+    ${inP.length ? `<ul class="ally-mini">${inP.map(a => `<li>${icon('handshake', 16)}<span><strong>${esc(a.name)}</strong><small class="muted">${esc(SERVICES[a.service]?.short || a.area || '')}${a.contact_name ? ` · ${esc(a.contact_name)}` : ''}</small></span>
+      ${edit ? `<button class="icon-btn" data-act="removeAlliance" data-id="${esc(a.id)}" title="Tirar do projeto">${icon('x', 14)}</button>` : ''}</li>`).join('')}</ul>` : '<p class="muted">Nenhuma aliança acionada.</p>'}
+    ${edit && rest.length ? `<select class="mt-12" data-change="addAlliance" aria-label="Acionar aliança"><option value="">+ Acionar aliança…</option>${rest.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('')}</select>` : ''}
+  </section>`;
 }
 
 function stagesPanel(p, edit) {
@@ -235,6 +309,16 @@ function stagesPanel(p, edit) {
           <input placeholder="Nova tarefa nesta etapa (Enter para adicionar)" aria-label="Nova tarefa">
           <button class="btn btn-ghost btn-sm" type="submit">${icon('plus', 16)}</button>
         </form>` : ''}
+        <div class="journal">
+          <div class="row between gap-8 wrap">
+            <span class="field-label">${icon('text', 14)} Diário da etapa</span>
+            <div class="row gap-8">
+              ${['pesquisa', 'conceito'].includes(def.key) ? `<a class="btn btn-ghost btn-sm" href="#/projetos/${esc(p.id)}/rascunho">${icon('image', 14)} Rascunho (${moodItems(p.id).length})</a>` : ''}
+              ${edit ? `<button class="btn btn-ghost btn-sm" data-act="journal" data-key="${def.key}">${icon('edit', 14)} ${s?.journal && Object.values(s.journal).some(Boolean) ? 'Editar' : 'Escrever'}</button>` : ''}
+            </div>
+          </div>
+          ${journalSummary(s) || '<p class="fine">O que foi feito, decisão e por quê, referências, próximo passo.</p>'}
+        </div>
         <div class="stage-foot">
           <span class="fine">Entregável: ${esc(def.output)}</span>
           ${edit ? (st === 'concluida'

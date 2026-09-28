@@ -5,12 +5,13 @@
 // As views leem do cache em memória (store.data) e escrevem via
 // insert/update/remove, que persistem e notificam re-render.
 // ============================================================
-import { CONFIG, DEMO } from './config.js';
+import { CONFIG, DEMO, LEAD_STAGE_MIGRATION } from './config.js';
 import { seed } from './seed.js';
 
 export const TABLES = [
   'profiles', 'accounts', 'projects', 'project_members', 'stages', 'tasks',
   'notes', 'files', 'leads', 'revenue', 'goals', 'events', 'xp_events', 'nps',
+  'alliances', 'aftersales', 'moodboard',
 ];
 
 const LS_DATA = 'imagine-hub:data:v2';
@@ -40,7 +41,8 @@ export const store = {
     if (DEMO) {
       const raw = safeGet(LS_DATA);
       this.data = raw ? { ...this.data, ...JSON.parse(raw) } : seed();
-      if (!raw) persist(this.data);
+      migrateLeads(this.data.leads);
+      persist(this.data);
       const id = safeGet(LS_USER);
       this.user = id ? this.find('profiles', id) : null;
       return;
@@ -64,6 +66,7 @@ export const store = {
   async loadAll() {
     const results = await Promise.all(TABLES.map(t => sb.from(t).select('*')));
     results.forEach((r, i) => { this.data[TABLES[i]] = r.data || []; });
+    migrateLeads(this.data.leads);
   },
 
   // ---------- auth ----------
@@ -166,6 +169,11 @@ export const store = {
     this.emit({ reset: true });
   },
 };
+
+// Leads com etapa do CRM antigo passam a aparecer no funil novo
+function migrateLeads(leads = []) {
+  leads.forEach(l => { if (LEAD_STAGE_MIGRATION[l.stage]) l.stage = LEAD_STAGE_MIGRATION[l.stage]; });
+}
 
 function persist(data) { safeSet(LS_DATA, JSON.stringify(data)); }
 function safeGet(k) { try { return localStorage.getItem(k); } catch { return null; } }

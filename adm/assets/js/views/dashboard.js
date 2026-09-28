@@ -70,7 +70,7 @@ export default {
             : empty('Agenda livre')}
         </section>
 
-        ${can('crm') ? leadsCard() : ''}
+        ${can('leads') ? leadsCard() : ''}
 
         <section class="card span-3">
           <div class="card-head"><h2>Projetos em andamento</h2><span class="muted">${projects.length} ativos</span></div>
@@ -120,10 +120,10 @@ function goalsCard() {
 }
 
 function leadsCard() {
-  const leads = store.where('leads', l => !['ganho', 'perdido'].includes(l.stage) && l.next_date)
+  const leads = store.where('leads', l => !['venda', 'perdido'].includes(l.stage) && l.next_date)
     .sort((a, b) => a.next_date.localeCompare(b.next_date)).slice(0, 5);
   return `<section class="card">
-    <div class="card-head"><h2>Próximos passos comerciais</h2><a href="#/crm" class="link">CRM ${icon('arrow', 14)}</a></div>
+    <div class="card-head"><h2>Próximos passos comerciais</h2><a href="#/leads" class="link">Leads ${icon('arrow', 14)}</a></div>
     ${leads.length ? `<ul class="agenda-mini">${leads.map(l => `
       <li><div class="am-date"><strong>${date(l.next_date, { day: '2-digit' })}</strong><span>${date(l.next_date, { month: 'short' })}</span></div>
       <div><div>${esc(l.company || l.name)} <span class="muted">· ${money(l.value)}</span></div><small class="muted">${esc(l.next_action || '')}</small></div></li>`).join('')}</ul>`
