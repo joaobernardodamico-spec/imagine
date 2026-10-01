@@ -28,7 +28,18 @@ export function canEditProject(p) {
 
 export const profile = id => store.find('profiles', id);
 export const account = id => store.find('accounts', id);
-export const projectKind = p => account(p.account_id)?.kind || 'cliente';
+// Todo projeto nasce na conta IMAGINE e tem um de dois tipos: cliente ou ecossistema.
+// Ecossistema inclui os projetos internos da IMAGINE. Projetos antigos herdam o tipo e o nome da conta.
+export const imagineAccount = () => store.all('accounts').find(a => a.kind === 'imagine') || null;
+export function projectKind(p) {
+  const k = p.kind || account(p.account_id)?.kind || 'cliente';
+  return k === 'imagine' ? 'ecossistema' : k;
+}
+export function clientLabel(p) {
+  if (p.client_name) return p.client_name;
+  const a = account(p.account_id);
+  return a && a.kind !== 'imagine' ? a.name : 'IMAGINE';
+}
 
 // ------------------------------------------------------------
 // Projetos
@@ -58,7 +69,8 @@ export function progressOf(pid) {
 
 export async function createProject(v) {
   const p = await store.insert('projects', {
-    account_id: v.account_id, name: v.name, track: v.track || 'branding', status: 'ativo',
+    account_id: v.account_id || imagineAccount()?.id || null, name: v.name, track: v.track || 'branding', status: 'ativo',
+    client_name: v.client_name || '', kind: v.kind || 'cliente', brand: {},
     objective: v.objective || '', start_date: v.start_date || today(), due_date: v.due_date || null,
     value: v.value || 0, briefing: v.objective ? { objetivo: v.objective } : {}, briefing_done: false,
     cover_color: v.cover_color || null, cover_url: v.cover_url || null, created_by: me().id,

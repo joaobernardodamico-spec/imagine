@@ -1,6 +1,6 @@
-// Shell do Hub: login, menu, roteamento por hash e delegação de eventos.
+// Shell do ATLAS: login, menu, roteamento por hash e delegação de eventos.
 import { store } from './store.js';
-import { DEMO, ROLES } from './config.js';
+import { DEMO, ROLES, APP_NAME } from './config.js';
 import { can, me } from './ops.js';
 import { xpOf, levelOf } from './game.js';
 import { esc, icon, avatar, toast, modal } from './util.js';
@@ -51,7 +51,7 @@ function resolve() {
   const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
   const [head = '', ...rest] = parts;
   const PROJECT_FILTERS = ['todos', 'cliente', 'ecossistema', 'imagine'];
-  if (head === 'projetos' && rest[0] && !PROJECT_FILTERS.includes(rest[0])) return { view: project, mod: 'projetos', params: { id: rest[0], tab: rest[1] || 'visao' } };
+  if (head === 'projetos' && rest[0] && !PROJECT_FILTERS.includes(rest[0])) return { view: project, mod: 'projetos', params: { id: rest[0], tab: rest[1] || 'visao', sub: rest[2] || null } };
   if (head === 'leads' && rest[0]) return { view: lead, mod: 'leads', params: { id: rest[0], tab: rest[1] || 'resumo' } };
   if (head === 'contas' && rest[0]) return { view: accounts, mod: 'contas', params: { id: rest[0], tab: rest[1] || 'marca' } };
   const path = head === 'crm' ? 'leads' : head;   // link antigo do CRM
@@ -73,7 +73,7 @@ function renderView() {
   current = r;
   view.innerHTML = r.view.render(r.params);
   r.view.after?.(view, r.params);
-  document.title = `${r.view.title?.(r.params) || 'Hub'} · IMAGINE`;
+  document.title = `${r.view.title?.(r.params) || APP_NAME} · ${APP_NAME}`;
   window.scrollTo(0, y);
   renderNav();
 }
@@ -128,9 +128,9 @@ function renderApp() {
   document.body.classList.remove('is-login');
   $('#app').innerHTML = `
     <aside class="sidebar" id="sidebar">
-      <a href="#/" class="brand">
+      <a href="#/" class="side-brand">
         <span class="logo-chip"><img src="assets/img/logo.png" alt="IMAGINE Concept"></span>
-        <span class="brand-tag">Hub</span>
+        <span class="brand-tag">${APP_NAME}</span>
       </a>
       ${DEMO ? '<div class="demo-pill" title="Dados salvos só neste navegador. Configure o Supabase para usar de verdade.">Modo demo</div>' : ''}
       <nav id="nav" class="nav"></nav>
@@ -154,7 +154,7 @@ function renderLogin(error = '') {
       <div class="login-art">
         <img src="assets/img/logo.png" alt="IMAGINE Concept">
         <div class="login-claim">
-          <span>Hub interno</span>
+          <span>${APP_NAME} · CRM da IMAGINE</span>
           <h1>Projetos, processos e <em>propósito</em> num lugar só.</h1>
         </div>
       </div>

@@ -530,3 +530,98 @@ begin
       '{}', '{}', '{}');
   end if;
 end $$;
+
+-- ============================================================
+-- ATLAS: cliente/tipo no projeto, marca por projeto e imagens da marca
+-- (rodar de novo é seguro: tudo é "if not exists")
+-- ============================================================
+alter table projects add column if not exists client_name text default '';
+alter table projects add column if not exists kind text;
+alter table projects add column if not exists brand jsonb not null default '{}';
+
+-- Projetos antigos: o tipo vem da conta (conta IMAGINE = ecossistema; só existem cliente e ecossistema)
+update projects p set kind = case when a.kind = 'imagine' then 'ecossistema' else a.kind end from accounts a where p.account_id = a.id and p.kind is null;
+
+create table if not exists brand_assets (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  section text not null,
+  url text not null,
+  label text default '',
+  note text default '',
+  bg text default '',
+  sort int default 0,
+  created_by uuid references profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists brand_assets_project_idx on brand_assets(project_id);
+
+alter table brand_assets enable row level security;
+drop policy if exists brand_assets_all on brand_assets;
+create policy brand_assets_all on brand_assets for all to authenticated using (can_see_project(project_id)) with check (can_see_project(project_id));
+
+-- ============================================================
+-- Projeto Dona Frida (cliente), com o briefing respondido no Google Forms em 22/06/2026.
+-- Só cria se ainda não existir um projeto com esse nome.
+-- ============================================================
+do $$
+declare
+  v_acc uuid := (select id from accounts where kind = 'imagine' order by created_at limit 1);
+  v_owner uuid := (select id from profiles where role = 'socio' order by created_at limit 1);
+  v_pid uuid;
+begin
+  if exists (select 1 from projects where name = 'Dona Frida') then return; end if;
+
+  insert into projects (account_id, name, client_name, kind, track, status, objective, start_date, due_date, value,
+                        briefing, briefing_done, cover_color, created_by, brand, alliances, reminders)
+  values (v_acc, 'Dona Frida', 'Dona Frida · doces e bolos', 'cliente', 'branding', 'ativo', 'Desenvolver a identidade visual completa (logo, cores, tipografia e aplicações) que traduza a essência da marca.',
+          current_date, current_date + 30, 0,
+          $briefing${"objetivo":"Desenvolver a identidade visual completa (logo, cores, tipografia e aplicações) que traduza a essência da marca.","q1_1":"Dona Frida - doces e bolos","q1_2":"Estou criando do zero","q1_3":"Nome fofo do meu cachorro que acho que combina com confeitaria","q1_4":"Venda de bolos e docinhos.","q1_5":"Sheron Villalobos","q2_1":"Fazer parte dos momentos mais importantes das pessoas, aniversários, conquistas, com bolos elaborados e doces deliciosos, e também estar presente no dia a dia com um bolo de pote.","q2_3":"Adoçar o dia das pessoas, com qualidade e sabor","q2_4":"Qualidade e sabor","q2_5":"Como os doces mais gostosos da cidade","q3_1":"Maioria mulheres, de todas as idades, classe média","q3_2":"Desde “um docinho pra alegrar o dia” até “o bolo mais lindo e delicioso de aniversário”","q3_3":"Espontânea mas sem gírias. Não muito formal para gerar conexão, mas com uso correto da linguagem.","q4_1":"Espontânea, feliz e elegante","q4_2":"Coloquial, Amigável","q4_3":"https://www.instagram.com/bloomgateau\nhttps://www.instagram.com/bullbaker_doceria\nhttps://www.instagram.com/denilsonlimaatelier","q5_1":"As que enviei o link do insta, acho que transmitem a beleza de um trabalho artístico e ao mesmo tempo muita qualidade e sabor. Sofisticado, um ambiente “limpo”, claro, clássico com um toque moderno.","q5_2":"Gosto de um tom rosê, mas acho que fica um pouco infantil, não sei… Pode ser que combine mais algo em tons “amarelo queimado”, marrom, detalhe dourado…","q5_3":"Talvez criar algo com o D e F\nUma opção, um elemento gráfico, com traços finos, de um doce, bolo ou fatia que fique sobreposto com uma flor. Com o nome “Dona Frida” em evidência e embaixo menor, “confeitaria” ou “doces e bolos”.\nOutra opção seria alguns traços finos que remetessem a origem do nome, a Frida, mas acredito q não combine muito um cachorro com confeitaria, tipo pelo e doces não dá certo 😅","q5_4":"Combinação (pode incluir 1 ou mais itens dessa lista)","q6_1":"Boleiras independentes da cidade","q6_2":"Trabalho bem feito, adquirido com a experiência. Construção de um nome que remetem a qualidade.\nGostaria de fazer algo com mais personalidade e menos IA, e crescer no Instagram também, pra quem sabe no futuro vender cursos na área.","q6_3":"Pouco conhecida.","q7_1":"Redes sociais, Embalagem, Papelaria (cartão, envelope, papel timbrado)","q7_2":"Nao","q7_3":"Podemos reformular","q8_1":"1 mês","q8_2":"Não","q8_3":"Algo sofisticado mas com personalidade, marcante","q10_1":"Nao","q10_2":"Fiz sozinha no canva kkkk era oq tinha pro momento. Pode repaginar do zero, confio em vc","q11_1":"Sheron","q11_2":"WhatsApp","q11_3":"Depende — podemos conversar","_import":{"when":"22/06/2026 19:21:14","at":"2026-10-01T00:00:00.000Z"}}$briefing$::jsonb, false, '#8A5A3B', v_owner,
+          '{}'::jsonb, '[]'::jsonb, $rem$[{"id":"r-frida-1","text":"Confirmar investimento com a Sheron (9.1 ficou em branco no Forms)","done":false},{"id":"r-frida-2","text":"Pedir o logo atual feito no Canva para o \"antes\" da marca","done":false}]$rem$::jsonb)
+  returning id into v_pid;
+
+  insert into stages (project_id, key, n, status)
+  select v_pid, s.key, s.n, case when s.n = 1 then 'andamento' else 'pendente' end
+  from (values ('objetivo', 1), ('briefing', 2), ('arquivos', 3), ('pesquisa', 4), ('conceito', 5), ('implementacao', 6), ('apresentacao', 7), ('revisao', 8), ('entrega', 9)) as s(key, n);
+
+  insert into tasks (project_id, stage_key, title, sort, done)
+  select v_pid, t.stage_key, t.title, t.sort, false
+  from (values
+      ('objetivo', 'Reunião de kickoff', 0),
+      ('objetivo', 'Escrever o objetivo em uma frase', 1),
+      ('objetivo', 'Validar objetivo com o cliente', 2),
+      ('briefing', 'Preencher briefing no Hub', 0),
+      ('briefing', 'Definir público e posicionamento', 1),
+      ('briefing', 'Definir entregáveis e prazo', 2),
+      ('briefing', 'Aprovar briefing', 3),
+      ('arquivos', 'Criar pasta no Drive', 0),
+      ('arquivos', 'Receber logos e materiais atuais', 1),
+      ('arquivos', 'Registrar contrato assinado', 2),
+      ('pesquisa', 'Mapear 3–5 concorrentes', 0),
+      ('pesquisa', 'Levantar similares e referências', 1),
+      ('pesquisa', 'Montar moodboard', 2),
+      ('pesquisa', 'Resumo de oportunidades', 3),
+      ('conceito', 'Definir conceito criativo', 0),
+      ('conceito', 'Palavras-chave da marca', 1),
+      ('conceito', 'Direção visual (rascunhos)', 2),
+      ('conceito', 'Rascunhos de símbolo e logotipo', 3),
+      ('implementacao', 'Logo principal', 0),
+      ('implementacao', 'Variações e versões', 1),
+      ('implementacao', 'Paleta de cores', 2),
+      ('implementacao', 'Tipografia', 3),
+      ('implementacao', 'Aplicações e mockups', 4),
+      ('implementacao', 'Manual de marca', 5),
+      ('apresentacao', 'Montar apresentação', 0),
+      ('apresentacao', 'Apresentar ao cliente', 1),
+      ('apresentacao', 'Registrar feedback', 2),
+      ('revisao', 'Aplicar ajustes', 0),
+      ('revisao', 'Aprovação final por escrito', 1),
+      ('entrega', 'Entregar arquivos finais', 0),
+      ('entrega', 'Enviar pesquisa NPS', 1),
+      ('entrega', 'Registrar case no portfólio', 2)
+  ) as t(stage_key, title, sort);
+
+  if v_owner is not null then
+    insert into project_members (project_id, user_id, role) values (v_pid, v_owner, 'lider');
+  end if;
+end $$;

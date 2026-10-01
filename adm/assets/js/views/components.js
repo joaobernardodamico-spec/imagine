@@ -1,7 +1,7 @@
 // Peças reutilizadas entre telas.
 import { store } from '../store.js';
-import { STAGES, ACCOUNT_KINDS, TRACKS, PROJECT_STATUS } from '../config.js';
-import { progressOf, account, profile, seesMoney } from '../ops.js';
+import { STAGES, ACCOUNT_KINDS, TRACKS, TRACK_ICONS, PROJECT_STATUS } from '../config.js';
+import { progressOf, account, profile, seesMoney, projectKind, clientLabel } from '../ops.js';
 import { esc, icon, avatar, money, date, relDays, progressBar } from '../util.js';
 
 export function kindTag(kind) {
@@ -18,21 +18,20 @@ export function stageDots(pid, { labels = false } = {}) {
 }
 
 export function projectCard(p) {
-  const a = account(p.account_id);
   const pr = progressOf(p.id);
   const team = store.where('project_members', m => m.project_id === p.id).map(m => profile(m.user_id)).filter(Boolean);
   const late = p.due_date && p.status === 'ativo' && p.due_date < new Date().toISOString().slice(0, 10);
   return `
   <a class="pcard ${p.cover_url ? 'has-cover' : ''}" href="#/projetos/${esc(p.id)}" style="--cover:${esc(p.cover_color || 'var(--navy)')}">
     <div class="pcard-cover" ${p.cover_url ? `style="background-image:url('${esc(p.cover_url)}')"` : ''}>
-      ${p.cover_url ? '' : `<span class="pcard-mono">${esc((a?.name || p.name).trim().charAt(0).toUpperCase())}</span>`}
+      ${p.cover_url ? '' : `<span class="pcard-mono">${esc(p.name.trim().charAt(0).toUpperCase())}</span>`}
     </div>
     <div class="pcard-top">
-      ${kindTag(a?.kind || 'cliente')}
-      <span class="pcard-track">${esc(TRACKS[p.track] || p.track)}</span>
+      ${kindTag(projectKind(p))}
+      <span class="pcard-track">${icon(TRACK_ICONS[p.track] || 'folder', 13)}${esc(TRACKS[p.track] || p.track)}</span>
       ${p.status !== 'ativo' ? `<span class="tag tag-status-${esc(p.status)}">${esc(PROJECT_STATUS[p.status])}</span>` : ''}
     </div>
-    <div class="pcard-account">${esc(a?.name || '—')}</div>
+    <div class="pcard-account">${esc(clientLabel(p))}</div>
     <h3 class="pcard-name">${esc(p.name)}</h3>
     ${stageDots(p.id)}
     <div class="pcard-stage">

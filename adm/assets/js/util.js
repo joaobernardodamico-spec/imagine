@@ -95,6 +95,23 @@ const P = {
   download: 'M12 4v12M7 11l5 5 5-5M4 16v2.5A1.5 1.5 0 005.5 20h13a1.5 1.5 0 001.5-1.5V16',
   bell: 'M6 16v-5a6 6 0 0112 0v5l1.5 2h-15zM10 20.5a2 2 0 004 0',
   chart: 'M4 20h16M7 16v-5M12 16V6M17 16v-8',
+  box: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9',
+  play: 'M5 4.5A1.5 1.5 0 016.5 3h11A1.5 1.5 0 0119 4.5v15a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 015 19.5zM10 8.5v7l5.5-3.5z',
+  sparkle: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z',
+  compass: 'M12 21a9 9 0 100-18 9 9 0 000 18zM15.5 8.5l-2 5-5 2 2-5z',
+  mic: 'M12 3a3 3 0 00-3 3v5a3 3 0 006 0V6a3 3 0 00-3-3zM5.5 11a6.5 6.5 0 0013 0M12 17.5V21M8.5 21h7',
+  shapes: 'M7 11a4 4 0 100-8 4 4 0 000 8zM14 14h7v7h-7zM7.5 13.5l4 7h-8z',
+  book: 'M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5zM4 20.5A2.5 2.5 0 016.5 23H20v-5M8 7.5h8',
+  crop: 'M6 2v14a2 2 0 002 2h14M2 6h14a2 2 0 012 2v14',
+  chevL: 'M15 5l-7 7 7 7',
+  chevR: 'M9 5l7 7-7 7',
+  chevD: 'M5 9l7 7 7-7',
+  phone: 'M5 4h3.5l1.5 4.5-2 1.5a11 11 0 006 6l1.5-2 4.5 1.5V19a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z',
+  sheet: 'M5 3.5A1.5 1.5 0 016.5 2H14l5 5v13.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 015 20.5zM8 11h8M8 14.5h8M8 18h8M12 11v7',
+  user: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4.5 21a7.5 7.5 0 0115 0',
+  quote: 'M9.5 7H6a1 1 0 00-1 1v4a1 1 0 001 1h3v1.5a3 3 0 01-3 3M19 7h-3.5a1 1 0 00-1 1v4a1 1 0 001 1h3v1.5a3 3 0 01-3 3',
+  cloud: 'M7 18h10.5a4 4 0 00.6-8 6 6 0 00-11.6 1.5A3.3 3.3 0 007 18z',
+  minus: 'M5 12h14',
 };
 
 export const icon = (name, size = 18) =>
@@ -137,7 +154,7 @@ export function celebrate(title, sub = '', xp = 0, kicker = 'Etapa concluída') 
 // fields: [{ name, label, type, options, value, required, placeholder, full, help, list, prefix }]
 // { section: 'Título' } abre um bloco; type 'chips' vira botões de escolha única.
 // ------------------------------------------------------------
-export function modal({ title, fields = [], body = '', submit = 'Salvar', danger = null, onSubmit, wide = false }) {
+export function modal({ title, fields = [], body = '', submit = 'Salvar', danger = null, onSubmit, wide = false, onOpen = null }) {
   const root = document.getElementById('modal');
   root.innerHTML = `
     <div class="modal-backdrop" data-close></div>
@@ -171,6 +188,7 @@ export function modal({ title, fields = [], body = '', submit = 'Salvar', danger
     e.preventDefault();
     const values = {};
     for (const f of fields) {
+      if (f.type === 'multi') { values[f.name] = [...form.querySelectorAll(`input[name="${f.name}"]:checked`)].map(i => i.value); continue; }
       const el = form.elements[f.name];
       if (!el) continue;
       let v = f.type === 'checkbox' ? el.checked : el.value.trim();
@@ -189,22 +207,110 @@ export function modal({ title, fields = [], body = '', submit = 'Salvar', danger
     catch (err) { console.error(err); toast(err.message || 'Erro ao salvar', { kind: 'error' }); btn.disabled = false; }
   });
   root.querySelectorAll('.img-field').forEach(wireImageField);
+  onOpen?.(root);
   setTimeout(() => form.querySelector('input:not([type=hidden]):not([type=file]),textarea,select')?.focus(), 30);
   return { close, root };
 }
 
-// Campo de foto: reduz no navegador (máx. 960px, JPEG) e guarda como data URL no próprio registro.
+// Campo de foto: reduz no navegador e guarda como data URL no próprio registro.
+// Com crop (proporção, ex. 1.6), abre o ajuste: arrastar para enquadrar e zoom.
 function wireImageField(box) {
   const file = box.querySelector('input[type=file]');
   const hidden = box.querySelector('input[type=hidden]');
   const prev = box.querySelector('.img-prev');
+  const ratio = Number(box.dataset.crop) || 0;
   const set = url => { hidden.value = url; prev.style.backgroundImage = url ? `url('${url}')` : ''; box.classList.toggle('has', !!url); };
   prev.addEventListener('click', () => file.click());
   box.querySelector('.img-clear').addEventListener('click', () => { set(''); file.value = ''; });
+  box.querySelector('.img-adjust')?.addEventListener('click', () => hidden.value && cropper(box, hidden.value, ratio, set));
   file.addEventListener('change', async () => {
     const f = file.files[0];
     if (!f) return;
-    try { set(await shrinkImage(f)); } catch { toast('Não consegui ler essa imagem.', { kind: 'error' }); }
+    try {
+      if (ratio) cropper(box, await shrinkImage(f, 2000, .9), ratio, set);
+      else set(await shrinkImage(f));
+    } catch { toast('Não consegui ler essa imagem.', { kind: 'error' }); }
+    file.value = '';
+  });
+}
+
+// Ajuste de enquadramento: a imagem sempre cobre a janela; arraste para mover, zoom de 1x a 3x.
+function cropper(box, src, ratio, done) {
+  box.querySelector('.crop')?.remove();
+  const ui = document.createElement('div');
+  ui.className = 'crop';
+  ui.innerHTML = `<div class="crop-view" style="aspect-ratio:${ratio}"><img alt="" draggable="false"></div>
+    <div class="crop-bar">${icon('image', 14)}<input type="range" min="1" max="3" step="0.01" value="1" aria-label="Zoom">${icon('image', 20)}
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-ghost btn-sm" data-crop-cancel>Cancelar</button>
+      <button type="button" class="btn btn-primary btn-sm" data-crop-ok>${icon('check', 14)} Aplicar</button></div>
+    <small>Arraste a imagem para enquadrar.</small>`;
+  box.appendChild(ui);
+  box.classList.add('cropping');
+  const view = ui.querySelector('.crop-view');
+  const img = ui.querySelector('img');
+  const range = ui.querySelector('input[type=range]');
+  let W = 0, H = 0, base = 1, z = 1, x = 0, y = 0;
+  const clamp = () => {
+    const s = base * z;
+    x = Math.min(0, Math.max(W - img.naturalWidth * s, x));
+    y = Math.min(0, Math.max(H - img.naturalHeight * s, y));
+  };
+  const paint = () => {
+    const s = base * z;
+    clamp();
+    img.style.width = `${img.naturalWidth * s}px`;
+    img.style.transform = `translate(${x}px, ${y}px)`;
+  };
+  img.onload = () => {
+    W = view.clientWidth; H = view.clientHeight;
+    base = Math.max(W / img.naturalWidth, H / img.naturalHeight);
+    x = (W - img.naturalWidth * base) / 2; y = (H - img.naturalHeight * base) / 2;
+    paint();
+  };
+  img.src = src;
+  range.addEventListener('input', () => {
+    const before = base * z, cx = W / 2, cy = H / 2;
+    z = Number(range.value);
+    const k = (base * z) / before;
+    x = cx - (cx - x) * k; y = cy - (cy - y) * k;
+    paint();
+  });
+  let drag = null;
+  view.addEventListener('pointerdown', e => { drag = { px: e.clientX, py: e.clientY, x, y }; view.setPointerCapture(e.pointerId); });
+  view.addEventListener('pointermove', e => { if (!drag) return; x = drag.x + e.clientX - drag.px; y = drag.y + e.clientY - drag.py; paint(); });
+  view.addEventListener('pointerup', () => { drag = null; });
+  const end = () => { ui.remove(); box.classList.remove('cropping'); };
+  ui.querySelector('[data-crop-cancel]').addEventListener('click', end);
+  ui.querySelector('[data-crop-ok]').addEventListener('click', () => {
+    const outW = 1280, outH = Math.round(outW / ratio), k = outW / W;
+    const c = document.createElement('canvas');
+    c.width = outW; c.height = outH;
+    const s = base * z * k;
+    c.getContext('2d').drawImage(img, x * k, y * k, img.naturalWidth * s, img.naturalHeight * s);
+    done(c.toDataURL('image/jpeg', .86));
+    end();
+  });
+}
+
+// Imagens de marca: mantém transparência (PNG/WebP) e SVG como vieram; fotos viram JPEG.
+export function readImage(file, max = 1600) {
+  if (file.type === 'image/svg+xml') {
+    return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+  }
+  const alpha = /png|webp|gif/.test(file.type);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      resolve(alpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', .85));
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
   });
 }
 
@@ -239,12 +345,21 @@ function fieldHTML(f) {
       return `<option value="${esc(val)}" ${String(val) === String(v) ? 'selected' : ''}>${esc(lab)}</option>`;
     }).join('')}</select>`;
   } else if (f.type === 'image') {
-    input = `<div class="img-field ${v ? 'has' : ''}">
-      <div class="img-prev" style="${v ? `background-image:url('${esc(v)}')` : ''}"><span>${icon('file', 20)} Escolher foto</span></div>
+    input = `<div class="img-field ${v ? 'has' : ''}" ${f.crop ? `data-crop="${f.crop}"` : ''}>
+      <div class="img-prev" style="${v ? `background-image:url('${esc(v)}');` : ''}${f.crop ? `aspect-ratio:${f.crop}` : ''}"><span>${icon('upload', 20)} Escolher foto</span></div>
       <input type="file" accept="image/*" id="${id}" hidden>
       <input type="hidden" name="${f.name}" value="${esc(v)}">
-      <button type="button" class="btn btn-ghost btn-sm img-clear">Remover</button>
+      <div class="img-actions">
+        ${f.crop ? `<button type="button" class="btn btn-ghost btn-sm img-adjust">${icon('crop', 14)} Ajustar imagem</button>` : ''}
+        <button type="button" class="btn btn-ghost btn-sm img-clear">Remover</button>
+      </div>
     </div>`;
+  } else if (f.type === 'multi') {
+    const sel = new Set(Array.isArray(v) ? v : []);
+    input = `<div class="picks picks-multi" id="${id}">${(f.options || []).map(o => {
+      const [val, lab, pre] = o;
+      return `<label class="pick"><input type="checkbox" name="${f.name}" value="${esc(val)}" ${sel.has(val) ? 'checked' : ''}><span>${pre || ''}${esc(lab)}</span></label>`;
+    }).join('')}</div>`;
   } else if (f.type === 'chips') {
     input = `<div class="picks" id="${id}" role="radiogroup">${(f.options || []).map(o => {
       const [val, lab, ic] = Array.isArray(o) ? o : [o, o];
@@ -258,7 +373,7 @@ function fieldHTML(f) {
     input = `<input id="${id}" name="${f.name}" type="${type}" value="${esc(v)}" placeholder="${esc(f.placeholder || '')}" ${f.type === 'money' ? 'step="0.01" min="0"' : ''} ${f.list ? `list="${id}-list"` : ''} ${req}>${list}`;
     if (f.prefix) input = `<div class="input-ico">${icon(f.prefix, 16)}${input}</div>`;
   }
-  return `<div class="field ${f.full || f.type === 'textarea' || f.type === 'image' ? 'full' : ''}">
+  return `<div class="field ${f.full || ['textarea', 'image', 'multi'].includes(f.type) ? 'full' : ''}">
     <label for="${id}">${esc(f.label)}${f.required ? ' <b>*</b>' : ''}</label>
     ${input}
     ${f.help ? `<small>${esc(f.help)}</small>` : ''}

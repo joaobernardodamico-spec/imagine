@@ -1,4 +1,4 @@
-// Rascunho: quadro em branco / moodboard do projeto.
+// Moodboard do projeto: quadro em branco de referências.
 // Grade meio torta de molduras retangulares. Arraste imagens do computador para uma moldura,
 // cole com Ctrl+V ou adicione por link. No hover aparece o nome e o botão "Texto".
 // O mesmo "Texto" é o diário de processo: simples, em formato de receita de bolo.
@@ -22,7 +22,7 @@ export function moodPanel(p, edit) {
     `<div class="mframe ${SHAPES[i % SHAPES.length]} ${cls}" style="--tilt:${TILTS[i % TILTS.length]}deg" ${attrs}>${inner}</div>`;
   return `<section class="mood">
     <div class="mood-head">
-      <div><div class="kicker">Quadro em branco</div><h2>Rascunho · moodboard</h2>
+      <div><div class="kicker">Quadro de referências</div><h2>Moodboard</h2>
         <p class="muted">Arraste imagens do computador para as molduras, cole com Ctrl+V ou adicione por link. Passe o mouse para ver o nome e abrir o texto.</p></div>
       ${edit ? `<div class="row gap-8 wrap">
         <button class="btn btn-ghost" data-act="moodUrl">${icon('link', 16)} Por link</button>

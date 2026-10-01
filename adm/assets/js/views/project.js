@@ -1,95 +1,69 @@
-// Página do projeto: visão, etapas (com checklist), briefing, marca, arquivos, notas, equipe, financeiro.
-import { store } from '../store.js';
-import { STAGES, TRACKS, PROJECT_STATUS, PROJECT_ROLES, ACCOUNT_KINDS } from '../config.js';
+// Página do projeto: barra de navegação no topo, capa, jornada das 9 etapas e as abas
+// (visão geral com as etapas, briefing, moodboard, marca, notas, equipe, financeiro).
+import { store, uid } from '../store.js';
+import { STAGES, TRACKS, TRACK_ICONS, PROJECT_STATUS, PROJECT_ROLES, SERVICES } from '../config.js';
 import {
-  me, role, account, profile, progressOf, stagesOf, tasksOf, toggleTask, completeStage, reopenStage,
-  saveBriefing, canEditProject, seesMoney, isSocio, receive,
+  me, role, profile, progressOf, stagesOf, tasksOf, toggleTask, completeStage, reopenStage,
+  canEditProject, seesMoney, isSocio, receive, projectKind, clientLabel, account,
 } from '../ops.js';
 import { award } from '../game.js';
-import { esc, icon, avatar, modal, money, date, relDays, progressBar, empty, ago, toast } from '../util.js';
-import { kindTag, tabs } from './components.js';
+import { esc, icon, avatar, modal, money, date, relDays, progressBar, empty, ago, toast, safeUrl } from '../util.js';
+import { tabs } from './components.js';
 import { openTask } from './task.js';
-import { brandPanel, brandActions } from './brand.js';
 import { filesPanel, fileActions } from './files.js';
 import { moodPanel, moodActions, wireMood, moodItems, journalSummary } from './moodboard.js';
-import { uid } from '../store.js';
-import { SERVICES } from '../config.js';
-
-const open = {}; // etapa expandida por projeto
-
-export const BRIEFING = [
-  { key: 'objetivo',     label: 'Objetivo principal', hint: 'O que define sucesso, em uma frase.', big: true },
-  { key: 'empresa',      label: 'Sobre a empresa', hint: 'História, momento atual, tamanho.' },
-  { key: 'publico',      label: 'Público', hint: 'Quem compra, quem usa, o que valoriza.' },
-  { key: 'problema',     label: 'Problema / oportunidade', hint: 'Por que este projeto existe agora.' },
-  { key: 'diferenciais', label: 'Diferenciais', hint: 'Por que escolhem esta marca.' },
-  { key: 'concorrentes', label: 'Concorrentes e similares', hint: 'Diretos, indiretos e inspirações.' },
-  { key: 'tom',          label: 'Personalidade e tom', hint: 'Se a marca fosse uma pessoa…' },
-  { key: 'referencias',  label: 'Referências que gosta', hint: 'Links, marcas, estilos.' },
-  { key: 'nao_quer',     label: 'O que não quer', hint: 'Cores, estilos, clichês a evitar.' },
-  { key: 'entregaveis',  label: 'Entregáveis', hint: 'Lista do que será entregue.' },
-  { key: 'restricoes',   label: 'Obrigatórios e restrições', hint: 'O que precisa ficar, limites técnicos.' },
-  { key: 'prazo',        label: 'Prazo', hint: 'Datas-chave e lançamento.' },
-  { key: 'investimento', label: 'Investimento', hint: 'Faixa aprovada.' },
-  { key: 'sucesso',      label: 'Como medir sucesso', hint: 'Números ou sinais concretos.' },
-];
+import { briefingPanel, briefingActions, briefingFilled } from './briefing.js';
+import { brandbookPanel, brandbookActions, wireBrandbook, brandProgress } from './brandbook.js';
+import { KIND_CHIPS, trackChips, resolveClient, wireProjectForm } from './projects.js';
 
 export default {
   title: ({ id }) => store.find('projects', id)?.name || 'Projeto',
 
-  render({ id, tab }) {
+  render({ id, tab, sub }) {
     const p = store.find('projects', id);
     if (!p) return `<div class="page">${empty('Projeto não encontrado', '', '<a class="btn btn-primary" href="#/projetos">Voltar</a>')}</div>`;
-    const a = account(p.account_id);
+    if (tab === 'rascunho') tab = 'moodboard';
+    if (tab === 'arquivos') { tab = 'visao'; sub = null; }   // arquivos agora é um card fixo na visão geral
+    if (tab === 'etapas') tab = 'visao';                      // etapas e visão geral são a mesma página
     const pr = progressOf(p.id);
     const edit = canEditProject(p);
     const nNotes = store.where('notes', n => n.project_id === p.id).length;
-    const nFiles = store.where('files', f => f.project_id === p.id).length;
+    const bf = briefingFilled(p);
 
     const TABS = [
-      ['visao', 'Visão geral'], ['etapas', 'Etapas', `${pr.doneStages}/9`], ['rascunho', 'Rascunho', moodItems(p.id).length || null], ['briefing', 'Briefing'],
-      ['marca', 'Marca'], ['arquivos', 'Arquivos', nFiles], ['notas', 'Notas', nNotes], ['equipe', 'Equipe'],
+      ['visao', 'Visão geral'], ['briefing', 'Briefing', `${bf.done}/${bf.total}`], ['moodboard', 'Moodboard', moodItems(p.id).length || null],
+      ['marca', 'Marca', `${brandProgress(p).pct}%`], ['notas', 'Notas', nNotes || null], ['equipe', 'Equipe'],
       ...(seesMoney() ? [['financeiro', 'Financeiro']] : []),
     ];
+    const selKey = tab === 'visao' ? (STAGES.some(s => s.key === sub) ? sub : pr.current?.key || 'entrega') : null;
 
-    return `<div class="page">
-      <a href="#/projetos" class="back">${icon('back', 16)} Projetos</a>
-      <header class="proj-head" style="--cover:${esc(p.cover_color || 'var(--navy)')}">
-        <div class="proj-head-main">
-          <div class="row gap-8 wrap">
-            ${kindTag(a?.kind || 'cliente')}
-            <span class="tag">${esc(TRACKS[p.track] || p.track)}</span>
-            <span class="tag tag-status-${esc(p.status)}">${esc(PROJECT_STATUS[p.status])}</span>
-          </div>
-          <a class="proj-account" href="#/contas/${esc(a?.id)}">${esc(a?.name || '')}</a>
-          <h1>${esc(p.name)}</h1>
-          ${p.objective ? `<p class="proj-objective"><span>Objetivo</span>${esc(p.objective)}</p>` : ''}
-        </div>
-        <div class="proj-head-side">
-          <div class="big-pct">${pr.pct}<small>%</small></div>
-          <div class="muted">${pr.doneTasks}/${pr.totalTasks} tarefas · ${pr.doneStages}/9 etapas</div>
-          <div class="muted">${p.due_date ? `Entrega ${date(p.due_date, { day: '2-digit', month: 'short', year: 'numeric' })} · ${relDays(p.due_date)}` : 'Sem prazo'}</div>
-          ${edit ? `<button class="btn btn-ghost btn-sm" data-act="editProject">${icon('edit', 16)} Editar</button>` : ''}
-        </div>
-      </header>
-
-      ${reminders(p, edit)}
-      ${pipeline(p, pr)}
-      ${tabs(TABS, tab, `projetos/${p.id}`)}
-      <div class="tab-panel">${panel(tab, p, a, edit)}</div>
+    return `<div class="page page-project">
+      <div class="ptop">
+        <nav class="crumbs" aria-label="Caminho">
+          <a href="#/projetos">${icon('folder', 16)} Projetos</a>${icon('chevR', 14)}<strong>${esc(p.name)}</strong>
+        </nav>
+        ${tabs(TABS, tab, `projetos/${p.id}`)}
+      </div>
+      ${tab === 'marca' && sub === 'manual' ? '' : header(p, pr, edit)}
+      ${tab === 'visao' ? journey(p, pr, selKey) : ''}
+      <div class="tab-panel">${panel(tab, sub, p, edit, selKey)}</div>
     </div>`;
   },
 
-  after(root, { id, tab }) {
-    if (tab === 'rascunho' && canEditProject(store.find('projects', id) || {})) wireMood(root, id);
+  after(root, { id, tab, sub }) {
+    const p = store.find('projects', id);
+    if (!p) return;
+    if ((tab === 'moodboard' || tab === 'rascunho') && canEditProject(p)) wireMood(root, id);
+    if (tab === 'marca') wireBrandbook(root, p, sub);
   },
 
   actions: {
-    ...brandActions,
     ...fileActions,
     ...moodActions,
+    ...briefingActions,
+    ...brandbookActions,
 
-    // Lembretes: checklist rápido que aparece ao abrir o projeto
+    // Lembretes: checklist rápido que não pode ser esquecido
     async addReminder(form, e, { id }) {
       const text = form.text.value.trim();
       if (!text) return;
@@ -106,6 +80,7 @@ export default {
       await store.update('projects', id, { reminders: (p.reminders || []).filter(r => r.id !== el.dataset.id) });
     },
     toggleDoneReminders() { showDoneRem = !showDoneRem; store.emit({}); },
+    focusReminder() { document.querySelector('.rem-add input')?.focus(); },
 
     // Alianças acionadas no projeto
     async addAlliance(el, e, { id }) {
@@ -120,13 +95,6 @@ export default {
 
     toggleTask(el) { const t = store.find('tasks', el.dataset.id); if (t) toggleTask(t); },
     openTask(el) { openTask(el.dataset.id); },
-    openStage(el, e, { id }) {
-      const key = el.dataset.key;
-      if (el.tagName === 'A') { open[id] = key; location.hash = el.getAttribute('href'); store.emit({}); return; }
-      const current = open[id] === undefined ? progressOf(id).current?.key : open[id];
-      open[id] = current === key ? null : key;
-      store.emit({});
-    },
     completeStage(el, e, { id }) { completeStage(id, el.dataset.key); },
     reopenStage(el, e, { id }) { if (confirm('Reabrir esta etapa?')) reopenStage(id, el.dataset.key); },
 
@@ -141,20 +109,10 @@ export default {
       if (stage?.status === 'concluida') await reopenStage(id, key);
       setTimeout(() => document.querySelector(`form[data-key="${key}"] input`)?.focus(), 30);
     },
-    taskAssignee(el) { store.update('tasks', el.dataset.id, { assignee_id: el.value || null }); },
-    taskDue(el) { store.update('tasks', el.dataset.id, { due_date: el.value || null }); },
     async deleteTask(el) {
       const t = store.find('tasks', el.dataset.id);
       if (confirm(`Excluir a tarefa "${t.title}"?`)) await store.remove('tasks', t.id);
     },
-
-    async saveBriefing(form, e, { id }) {
-      const p = store.find('projects', id);
-      const data = Object.fromEntries(BRIEFING.map(f => [f.key, form.elements[f.key].value.trim()]));
-      const done = e.submitter?.dataset.done === '1' || p.briefing_done;
-      await saveBriefing(p, data, done);
-    },
-    printBriefing() { window.print(); },
 
     async addNote(form, e, { id }) {
       const body = form.body.value.trim();
@@ -170,12 +128,15 @@ export default {
       const people = store.all('profiles').filter(u => !inProj.has(u.id) && u.active !== false);
       if (!people.length) return toast('Todo mundo já está no projeto');
       modal({
-        title: 'Adicionar à equipe do projeto',
+        title: 'Adicionar integrantes',
         fields: [
-          { name: 'user_id', label: 'Pessoa', type: 'select', options: people.map(u => [u.id, u.name]) },
+          { name: 'users', label: 'Integrantes', type: 'multi', options: people.map(u => [u.id, u.name, avatar(u, 20)]) },
           { name: 'role', label: 'Função no projeto', type: 'select', options: Object.entries(PROJECT_ROLES), value: 'design' },
         ],
-        async onSubmit(v) { await store.insert('project_members', { project_id: id, ...v }); },
+        async onSubmit(v) {
+          if (!v.users.length) return;
+          await store.insertMany('project_members', v.users.map(user_id => ({ project_id: id, user_id, role: v.role })));
+        },
       });
     },
     memberRole(el) { store.update('project_members', el.dataset.id, { role: el.value }); },
@@ -187,88 +148,148 @@ export default {
 };
 
 // ------------------------------------------------------------
-function pipeline(p, pr) {
-  return `<ol class="pipeline">${STAGES.map(def => {
-    const s = pr.stages.find(x => x.key === def.key);
-    const st = s?.status || 'pendente';
-    const t = tasksOf(p.id, def.key);
-    const d = t.filter(x => x.done).length;
-    return `<li class="pipe pipe-${st}">
-      <a href="#/projetos/${esc(p.id)}/etapas" data-act="openStage" data-key="${def.key}">
-        <span class="pipe-n">${st === 'concluida' ? icon('check', 14) : def.n}</span>
-        <span class="pipe-name">${esc(def.name)}</span>
-        <span class="pipe-count">${d}/${t.length}</span>
-      </a>
-    </li>`;
-  }).join('')}</ol>`;
-}
-
-function panel(tab, p, a, edit) {
-  switch (tab) {
-    case 'etapas': return stagesPanel(p, edit);
-    case 'rascunho': return moodPanel(p, edit);
-    case 'briefing': return briefingPanel(p, edit);
-    case 'marca': return a ? `${brandPanel(a, { editable: edit })}<p class="fine">O manual pertence à conta <a href="#/contas/${esc(a.id)}">${esc(a.name)}</a> e é compartilhado entre todos os projetos dela.</p>` : '';
-    case 'arquivos': return filesPanel({ project_id: p.id, account_id: p.account_id });
-    case 'notas': return notesPanel(p);
-    case 'equipe': return teamPanel(p);
-    case 'financeiro': return seesMoney() ? financePanel(p) : '';
-    default: return overview(p, a);
-  }
-}
-
-function overview(p, a) {
-  const pr = progressOf(p.id);
-  const cur = pr.current;
-  const curTasks = cur ? tasksOf(p.id, cur.key) : [];
-  const pinned = store.where('notes', n => n.project_id === p.id && n.pinned);
-  const team = store.where('project_members', m => m.project_id === p.id);
-  const bFilled = BRIEFING.filter(f => (p.briefing || {})[f.key]).length;
-  return `<div class="grid-2">
-    <section class="card">
-      <div class="card-head"><h2>${cur ? `Agora: ${pr.currentDef.n}. ${esc(pr.currentDef.name)}` : 'Projeto entregue'}</h2>
-      <a class="link" href="#/projetos/${esc(p.id)}/etapas">Todas as etapas ${icon('arrow', 14)}</a></div>
-      ${cur ? `<p class="muted">${esc(pr.currentDef.why)}</p>
-        <ul class="task-list">${curTasks.map(t => taskRow(t, p, true)).join('')}</ul>
-        <p class="fine">Entregável da etapa: ${esc(pr.currentDef.output)}</p>` : '<p>Todas as 9 etapas foram concluídas.</p>'}
-    </section>
-    <div class="stack">
-      <section class="card">
-        <div class="card-head"><h2>Acesso rápido</h2><a class="link" href="#/projetos/${esc(p.id)}/arquivos">Arquivos ${icon('arrow', 14)}</a></div>
-        ${filesPanel({ project_id: p.id, account_id: p.account_id, compact: true })}
-      </section>
-      <section class="card">
-        <div class="card-head"><h2>Briefing</h2><span class="${p.briefing_done ? 'ok' : 'muted'}">${p.briefing_done ? 'Completo' : `${bFilled}/${BRIEFING.length} campos`}</span></div>
-        ${progressBar(bFilled, BRIEFING.length)}
-        <a class="btn btn-ghost btn-sm mt-12" href="#/projetos/${esc(p.id)}/briefing">${icon('brief', 16)} Abrir briefing</a>
-      </section>
-      <section class="card">
-        <div class="card-head"><h2>Equipe</h2></div>
-        <div class="team-inline">${team.map(m => { const u = profile(m.user_id); return u ? `<span class="person">${avatar(u, 28)}<span>${esc(u.name.split(' ')[0])}<small>${esc(PROJECT_ROLES[m.role] || m.role)}</small></span></span>` : ''; }).join('')}</div>
-      </section>
-      ${alliancesCard(p)}
-      ${pinned.length ? `<section class="card"><div class="card-head"><h2>Notas fixadas</h2></div>${pinned.map(n => `<blockquote class="note-pin">${esc(n.body)}</blockquote>`).join('')}</section>` : ''}
+// Cabeçalho: capa ao lado, nome, objetivo e progresso
+// ------------------------------------------------------------
+function header(p, pr, edit) {
+  const kind = projectKind(p);
+  const late = p.status === 'ativo' && p.due_date && p.due_date < new Date().toISOString().slice(0, 10);
+  return `<header class="phead card" style="--cover:${esc(p.cover_color || 'var(--accent)')}">
+    <div class="phead-cover ${p.cover_url ? 'has' : ''}" ${p.cover_url ? `style="background-image:url('${esc(p.cover_url)}')"` : ''}>
+      ${p.cover_url ? '' : `<span>${esc(p.name.trim().charAt(0).toUpperCase())}</span>`}
+      ${edit ? `<button class="phead-cover-edit" data-act="editProject" title="Trocar ou ajustar a capa">${icon('crop', 14)}</button>` : ''}
     </div>
+    <div class="phead-main">
+      <div class="row gap-8 wrap">
+        <span class="pill pill-${esc(kind)}"><i></i>${esc(clientLabel(p))}</span>
+        <span class="pill">${icon(TRACK_ICONS[p.track] || 'folder', 13)}${esc(TRACKS[p.track] || p.track)}</span>
+        <span class="pill pill-status-${esc(p.status)}"><i></i>${esc(PROJECT_STATUS[p.status])}</span>
+        <span class="pill pill-due ${late ? 'late-pill' : ''}">${icon('calendar', 13)}${p.due_date ? `Entrega ${date(p.due_date, { day: '2-digit', month: 'short', year: 'numeric' })} · ${relDays(p.due_date)}` : 'Sem prazo'}</span>
+        ${edit ? `<button class="pill pill-edit" data-act="editProject">${icon('edit', 13)}Editar</button>` : ''}
+      </div>
+      <h1>${esc(p.name)}</h1>
+      ${p.objective ? `<p class="phead-obj">${esc(p.objective)}</p>` : (edit ? `<button class="link" data-act="editProject">${icon('plus', 14)} Definir objetivo principal</button>` : '')}
+    </div>
+  </header>`;
+}
+
+function ring(pct) {
+  const r = 34, c = 2 * Math.PI * r;
+  return `<div class="ring" role="img" aria-label="${pct}% concluído">
+    <svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="${r}" class="ring-bg"/><circle cx="40" cy="40" r="${r}" class="ring-fg" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - pct / 100)}"/></svg>
+    <span>${pct}<small>%</small></span>
   </div>`;
 }
 
-// Lembretes no topo do projeto: o que não pode ser esquecido
+// ------------------------------------------------------------
+// Jornada: as 9 etapas em linha. Cada uma abre a própria caixa.
+// ------------------------------------------------------------
+function journey(p, pr, selKey) {
+  return `<section class="journey card">
+    <div class="jprog">
+      ${ring(pr.pct)}
+      <div class="jprog-nums"><strong>${pr.doneTasks}<small> de ${pr.totalTasks}</small></strong><span>tarefas</span><em>${pr.doneStages} de 9 etapas</em></div>
+    </div>
+    <div class="jmain">
+    <div class="journey-head"><h2>Jornada do projeto</h2></div>
+    <ol class="jsteps">${STAGES.map(def => {
+      const s = pr.stages.find(x => x.key === def.key);
+      const st = s?.status || 'pendente';
+      const t = tasksOf(p.id, def.key);
+      return `<li class="jstep jstep-${st} ${def.key === selKey ? 'sel' : ''}">
+        <a href="#/projetos/${esc(p.id)}/visao/${def.key}" title="${esc(def.why)}">
+          <span class="jdot">${st === 'concluida' ? icon('check', 16) : def.n}</span>
+          <span class="jname">${esc(def.name)}</span>
+          <small>${t.filter(x => x.done).length}/${t.length}</small>
+        </a>
+      </li>`;
+    }).join('')}</ol>
+    </div>
+  </section>`;
+}
+
+function panel(tab, sub, p, edit, selKey) {
+  switch (tab) {
+    case 'moodboard': return moodPanel(p, edit);
+    case 'briefing': return briefingPanel(p, edit, sub);
+    case 'marca': return brandbookPanel(p, edit, sub);
+    case 'notas': return notesPanel(p);
+    case 'equipe': return teamPanel(p);
+    case 'financeiro': return seesMoney() ? financePanel(p) : '';
+    default: return stagesPanel(p, edit, selKey);
+  }
+}
+
+// ------------------------------------------------------------
+// Próximo passo + lembretes (coluna lateral)
+// ------------------------------------------------------------
+function nextCard(p, pr) {
+  const def = pr.currentDef;
+  if (!def) return `<section class="next-card"><div class="kicker">Projeto entregue</div><h3>Até o próximo projeto!</h3>
+    <p>As 9 etapas foram concluídas.</p><a class="btn btn-primary btn-sm" href="#/projetos/${esc(p.id)}/marca/manual">${icon('book', 15)} Manual completo</a></section>`;
+  const nx = def.next || {};
+  return `<section class="next-card">
+    <div class="kicker">Próximo passo · ${def.n}. ${esc(def.name)}</div>
+    <h3>${esc((nx.title || def.name).replace('{name}', p.name))}</h3>
+    <p>${esc(nx.text || def.why)}</p>
+    ${nx.cta ? `<a class="btn btn-primary btn-sm" href="#/projetos/${esc(p.id)}/${esc(nx.cta[0])}">${esc(nx.cta[1])} ${icon('arrow', 14)}</a>` : ''}
+    <span class="next-cloud" aria-hidden="true"></span>
+  </section>`;
+}
+
 let showDoneRem = false;
-function reminders(p, edit) {
+function remindersCard(p, edit) {
   const list = p.reminders || [];
   const open = list.filter(r => !r.done);
   const done = list.filter(r => r.done);
-  if (!list.length && !edit) return '';
-  return `<section class="reminders ${open.length ? 'has-open' : ''}">
-    <div class="rem-head">${icon('bell', 16)}<strong>Lembretes</strong><span class="count">${open.length}</span>
-      ${done.length ? `<button class="link" data-act="toggleDoneReminders">${showDoneRem ? 'Esconder' : 'Ver'} ${done.length} feito${done.length > 1 ? 's' : ''}</button>` : ''}</div>
-    <ul class="rem-list">${[...open, ...(showDoneRem ? done : [])].map(r => `<li class="${r.done ? 'done' : ''}">
+  return `<section class="card reminders ${open.length ? 'has-open' : ''}">
+    <div class="card-head">
+      <h2>${icon('bell', 17)} Lembretes ${open.length ? `<span class="count">${open.length}</span>` : ''}</h2>
+      ${done.length ? `<button class="link" data-act="toggleDoneReminders">${showDoneRem ? 'Esconder' : 'Ver'} ${done.length} feito${done.length > 1 ? 's' : ''}</button>` : ''}
+    </div>
+    ${list.length ? `<ul class="rem-list">${[...open, ...(showDoneRem ? done : [])].map(r => `<li class="${r.done ? 'done' : ''}">
       <button class="checkbox" data-act="toggleReminder" data-id="${esc(r.id)}" aria-label="${r.done ? 'Desmarcar' : 'Concluir'}" ${edit ? '' : 'disabled'}>${icon('check', 14)}</button>
       <span>${esc(r.text)}</span>
       ${edit ? `<button class="icon-btn" data-act="delReminder" data-id="${esc(r.id)}" title="Excluir">${icon('x', 14)}</button>` : ''}
-    </li>`).join('')}</ul>
-    ${edit ? `<form class="rem-add" data-submit="addReminder"><input name="text" placeholder="Novo lembrete (Enter): pedir acessos, enviar contrato, confirmar fonte…" aria-label="Novo lembrete"></form>` : ''}
+    </li>`).join('')}</ul>` : `<div class="rem-empty">${icon('bell', 22)}<strong>Nenhum lembrete ainda.</strong><small>Pedir acessos, enviar contrato, confirmar fonte…</small></div>`}
+    ${edit ? `<form class="rem-add" data-submit="addReminder"><input name="text" placeholder="+ Adicionar lembrete (Enter)" aria-label="Novo lembrete"></form>` : ''}
   </section>`;
+}
+
+// ------------------------------------------------------------
+// Visão geral
+// ------------------------------------------------------------
+function quickCard(p) {
+  const bf = briefingFilled(p);
+  const bp = brandProgress(p);
+  const nMood = moodItems(p.id).length;
+  const files = store.where('files', f => f.project_id === p.id);
+  const drive = files.find(f => f.kind === 'drive');
+  const row = (href, ic, title, sub, bar = '', ext = false) => `<a class="qrow" href="${href}" ${ext ? 'target="_blank" rel="noopener"' : ''}>
+    <span class="qic">${icon(ic, 18)}</span><span class="qtxt"><strong>${title}</strong><small>${sub}</small>${bar}</span>${icon(ext ? 'link' : 'chevR', 15)}</a>`;
+  return `<section class="card quick">
+    <div class="quick-grid">
+      ${drive ? row(esc(safeUrl(drive.url)), 'folder', 'Drive', esc(drive.label || 'Pasta do cliente'), '', true)
+        : `<button class="qrow" data-act="addFile" data-kind="drive" data-project="${esc(p.id)}" data-account="${esc(p.account_id || '')}"><span class="qic">${icon('folder', 18)}</span><span class="qtxt"><strong>Drive</strong><small>Adicionar pasta</small></span>${icon('plus', 15)}</button>`}
+      ${row(`#/projetos/${esc(p.id)}/briefing`, 'brief', 'Briefing', p.briefing_done ? 'Completo' : `${bf.done} de ${bf.total}`, progressBar(bf.done, bf.total))}
+      ${row(`#/projetos/${esc(p.id)}/marca`, 'brand', 'Marca', `${bp.done} de ${bp.total} seções`, progressBar(bp.done, bp.total))}
+      ${row(`#/projetos/${esc(p.id)}/moodboard`, 'image', 'Moodboard', `${nMood} imagem${nMood === 1 ? '' : 'ns'}`)}
+    </div>
+    <details class="quick-files">
+      <summary>${icon('file', 15)} Arquivos e links (${files.length})</summary>
+      ${filesPanel({ project_id: p.id, account_id: p.account_id, compact: true })}
+    </details>
+  </section>`;
+}
+
+function extraCards(p, edit) {
+  const pinned = store.where('notes', n => n.project_id === p.id && n.pinned);
+  const team = store.where('project_members', m => m.project_id === p.id);
+  return `<section class="card">
+      <div class="card-head"><h2>Integrantes</h2><a class="link" href="#/projetos/${esc(p.id)}/equipe">Equipe ${icon('arrow', 14)}</a></div>
+      <div class="team-inline">${team.map(m => { const u = profile(m.user_id); return u ? `<span class="person">${avatar(u, 30)}<span>${esc(u.name.split(' ')[0])}<small>${esc(PROJECT_ROLES[m.role] || m.role)}</small></span></span>` : ''; }).join('')}</div>
+    </section>
+    ${alliancesCard(p)}
+    ${pinned.length ? `<section class="card"><div class="card-head"><h2>Notas fixadas</h2></div>${pinned.map(n => `<blockquote class="note-pin">${esc(n.body)}</blockquote>`).join('')}</section>` : ''}`;
 }
 
 function alliancesCard(p) {
@@ -286,109 +307,95 @@ function alliancesCard(p) {
   </section>`;
 }
 
-function stagesPanel(p, edit) {
+// ------------------------------------------------------------
+// Etapas: a etapa escolhida na jornada abre na própria caixa
+// ------------------------------------------------------------
+function stagesPanel(p, edit, key) {
   const pr = progressOf(p.id);
-  const openKey = open[p.id] === undefined ? pr.current?.key : open[p.id];
-  const team = store.all('profiles');
-  return `<div class="stages">${STAGES.map(def => {
-    const s = pr.stages.find(x => x.key === def.key);
-    const st = s?.status || 'pendente';
-    const tasks = tasksOf(p.id, def.key);
-    const d = tasks.filter(t => t.done).length;
-    const isOpen = openKey === def.key;
-    return `<section class="stage stage-${st} ${isOpen ? 'open' : ''}">
-      <button class="stage-head" data-act="openStage" data-key="${def.key}" aria-expanded="${isOpen}">
-        <span class="stage-n">${st === 'concluida' ? icon('check', 16) : def.n}</span>
-        <span class="stage-title"><strong>${esc(def.name)}</strong><small>${esc(def.why)}</small></span>
-        <span class="stage-meta">${st === 'concluida' ? `Concluída ${date(s.done_at)}` : `${d}/${tasks.length}`}</span>
-      </button>
-      ${isOpen ? `<div class="stage-body">
-        ${progressBar(d, tasks.length || 1)}
-        <ul class="task-list">${tasks.map(t => taskRow(t, p, false, team, edit)).join('') || '<li class="muted">Sem tarefas nesta etapa.</li>'}</ul>
-        ${edit ? `<form class="add-task" data-submit="addTask" data-key="${def.key}">
-          <input placeholder="Nova tarefa nesta etapa (Enter para adicionar)" aria-label="Nova tarefa">
-          <button class="btn btn-ghost btn-sm" type="submit">${icon('plus', 16)}</button>
-        </form>` : ''}
-        <div class="journal">
-          <div class="row between gap-8 wrap">
-            <span class="field-label">${icon('text', 14)} Diário da etapa</span>
-            <div class="row gap-8">
-              ${['pesquisa', 'conceito'].includes(def.key) ? `<a class="btn btn-ghost btn-sm" href="#/projetos/${esc(p.id)}/rascunho">${icon('image', 14)} Rascunho (${moodItems(p.id).length})</a>` : ''}
-              ${edit ? `<button class="btn btn-ghost btn-sm" data-act="journal" data-key="${def.key}">${icon('edit', 14)} ${s?.journal && Object.values(s.journal).some(Boolean) ? 'Editar' : 'Escrever'}</button>` : ''}
-            </div>
-          </div>
-          ${journalSummary(s) || '<p class="fine">O que foi feito, decisão e por quê, referências, próximo passo.</p>'}
+  const def = STAGES.find(s => s.key === key) || STAGES[0];
+  const s = pr.stages.find(x => x.key === def.key);
+  const st = s?.status || 'pendente';
+  const tasks = tasksOf(p.id, def.key);
+  const d = tasks.filter(t => t.done).length;
+  const idx = STAGES.indexOf(def);
+  const prev = STAGES[idx - 1], next = STAGES[idx + 1];
+  const cta = def.next?.cta;
+
+  return `<div class="side-layout">
+    <section class="card stage-card stage-${st}">
+      <header class="sc-head">
+        <span class="sc-n">${st === 'concluida' ? icon('check', 22) : def.n}</span>
+        <div class="sc-title"><h2>${esc(def.name)}</h2><p class="muted">${esc(def.why)}</p></div>
+        <div class="sc-prog"><span>${st === 'concluida' ? `Concluída ${date(s.done_at)}` : `${d} de ${tasks.length}`}</span>${progressBar(d, tasks.length || 1)}</div>
+      </header>
+      <ul class="sc-tasks">${tasks.map(t => taskRow(t, edit)).join('') || '<li class="muted sc-empty">Sem tarefas nesta etapa.</li>'}</ul>
+      ${edit ? `<form class="add-task" data-submit="addTask" data-key="${def.key}">
+        <input placeholder="+ Nova tarefa nesta etapa (Enter)" aria-label="Nova tarefa">
+      </form>` : ''}
+      <div class="journal">
+        <div class="row between gap-8 wrap">
+          <span class="field-label">${icon('text', 15)} Diário da etapa</span>
+          ${edit ? `<button class="btn btn-ghost btn-sm" data-act="journal" data-key="${def.key}">${icon('edit', 14)} ${s?.journal && Object.values(s.journal).some(Boolean) ? 'Editar' : 'Escrever'}</button>` : ''}
         </div>
-        <div class="stage-foot">
-          <span class="fine">Entregável: ${esc(def.output)}</span>
+        ${journalSummary(s) || '<p class="fine">O que foi feito, decisão e por quê, referências, próximo passo.</p>'}
+      </div>
+      <footer class="sc-foot">
+        <span class="fine">${icon('file', 14)} Entregável: ${esc(def.output)}</span>
+        <div class="row gap-8 wrap">
+          ${cta ? `<a class="btn btn-ghost btn-sm" href="#/projetos/${esc(p.id)}/${esc(cta[0])}">${esc(cta[1])}</a>` : ''}
           ${edit ? (st === 'concluida'
             ? `<button class="btn btn-ghost btn-sm" data-act="reopenStage" data-key="${def.key}">Reabrir etapa</button>`
-            : `<button class="btn btn-primary btn-sm" data-act="completeStage" data-key="${def.key}">${icon('check', 16)} Concluir etapa</button>`) : ''}
+            : `<button class="btn btn-primary btn-sm" data-act="completeStage" data-key="${def.key}">${icon('check', 15)} Concluir etapa</button>`) : ''}
         </div>
-      </div>` : ''}
-    </section>`;
-  }).join('')}</div>`;
+      </footer>
+      <nav class="sc-nav">
+        ${prev ? `<a href="#/projetos/${esc(p.id)}/visao/${prev.key}">${icon('chevL', 15)} ${prev.n}. ${esc(prev.name)}</a>` : '<span></span>'}
+        ${next ? `<a href="#/projetos/${esc(p.id)}/visao/${next.key}">${next.n}. ${esc(next.name)} ${icon('chevR', 15)}</a>` : ''}
+      </nav>
+    </section>
+    <aside class="stack">
+      ${quickCard(p)}
+      ${nextCard(p, pr)}
+      ${remindersCard(p, edit)}
+      ${extraCards(p, edit)}
+    </aside>
+  </div>`;
 }
 
-function taskRow(t, p, compact, team = [], edit = true) {
+function taskRow(t, edit = true) {
   const late = !t.done && t.due_date && t.due_date < new Date().toISOString().slice(0, 10);
   const who = profile(t.assignee_id);
+  const cl = t.checklist || [];
+  const meta = [
+    t.done && t.done_by ? `feito por ${esc(profile(t.done_by)?.name?.split(' ')[0] || '')} · ${date(t.done_at)}` : '',
+    !t.done && t.due_date ? `<span class="${late ? 'late' : ''}">${icon('calendar', 12)} ${relDays(t.due_date)}</span>` : '',
+  ].filter(Boolean).join(' · ');
   return `<li class="task ${t.done ? 'done' : ''}">
     <button class="checkbox" data-act="toggleTask" data-id="${esc(t.id)}" aria-label="${t.done ? 'Desmarcar' : 'Concluir'}" ${edit ? '' : 'disabled'}>${icon('check', 14)}</button>
-    <div class="task-body"><button class="task-title task-open" data-act="openTask" data-id="${esc(t.id)}">${esc(t.title)}${(t.checklist || []).length ? ` <small class="muted">${t.checklist.filter(i => i.done).length}/${t.checklist.length}</small>` : ""}</button>
-      ${t.done && t.done_by ? `<small class="muted">feito por ${esc(profile(t.done_by)?.name?.split(' ')[0] || '')} · ${date(t.done_at)}</small>` : ''}
-    </div>
-    ${compact
-      ? `${who ? avatar(who, 22) : ''}${t.due_date && !t.done ? `<span class="due ${late ? 'late' : ''}">${relDays(t.due_date)}</span>` : ''}`
-      : `<select class="mini" data-change="taskAssignee" data-id="${esc(t.id)}" aria-label="Responsável" ${edit ? '' : 'disabled'}>
-          <option value="">Sem dono</option>${team.map(u => `<option value="${esc(u.id)}" ${u.id === t.assignee_id ? 'selected' : ''}>${esc(u.name.split(' ')[0])}</option>`).join('')}
-        </select>
-        <input class="mini ${late ? 'late' : ''}" type="date" value="${esc(t.due_date || '')}" data-change="taskDue" data-id="${esc(t.id)}" aria-label="Prazo" ${edit ? '' : 'disabled'}>
-        ${edit ? `<button class="icon-btn" data-act="deleteTask" data-id="${esc(t.id)}" title="Excluir">${icon('trash', 16)}</button>` : ''}`}
+    <button class="task-body" data-act="openTask" data-id="${esc(t.id)}">
+      <span class="task-title">${esc(t.title)}</span>
+      ${meta ? `<small class="task-sub">${meta}</small>` : ''}
+    </button>
+    ${who ? avatar(who, 24) : ''}
+    ${cl.length ? `<span class="task-cl" title="Checklist">${icon('file', 14)} ${cl.filter(i => i.done).length}/${cl.length}</span>` : ''}
+    ${edit ? `<button class="icon-btn task-del" data-act="deleteTask" data-id="${esc(t.id)}" title="Excluir">${icon('trash', 15)}</button>` : ''}
+    <button class="icon-btn" data-act="openTask" data-id="${esc(t.id)}" aria-label="Abrir tarefa">${icon('chevR', 16)}</button>
   </li>`;
 }
 
-function briefingPanel(p, edit) {
-  const b = p.briefing || {};
-  const filled = BRIEFING.filter(f => b[f.key]).length;
-  return `<form class="briefing" data-submit="saveBriefing">
-    <div class="briefing-head">
-      <div>
-        <div class="kicker">Direcionador</div>
-        <h2>Briefing · ${esc(p.name)}</h2>
-        <p class="muted">Todas as decisões do projeto voltam aqui. ${filled}/${BRIEFING.length} campos preenchidos${p.briefing_done ? ' · <strong class="ok">marcado como completo</strong>' : ''}.</p>
-      </div>
-      <div class="row gap-8 no-print">
-        <button type="button" class="btn btn-ghost" data-act="printBriefing">${icon('file', 16)} Imprimir / PDF</button>
-      </div>
-    </div>
-    ${progressBar(filled, BRIEFING.length)}
-    <div class="briefing-grid">
-      ${BRIEFING.map(f => `<div class="bfield ${f.big ? 'big' : ''}">
-        <label for="b-${f.key}">${esc(f.label)}</label>
-        <small>${esc(f.hint)}</small>
-        <textarea id="b-${f.key}" name="${f.key}" rows="${f.big ? 2 : 3}" ${edit ? '' : 'readonly'}>${esc(b[f.key] || '')}</textarea>
-      </div>`).join('')}
-    </div>
-    ${edit ? `<div class="briefing-foot no-print">
-      <button class="btn btn-ghost" type="submit">Salvar</button>
-      ${p.briefing_done ? '' : `<button class="btn btn-primary" type="submit" data-done="1">${icon('check', 16)} Salvar e marcar como completo</button>`}
-    </div>` : ''}
-  </form>`;
-}
-
+// ------------------------------------------------------------
 function notesPanel(p) {
   const notes = store.where('notes', n => n.project_id === p.id)
     .sort((a, b) => (b.pinned - a.pinned) || String(b.created_at).localeCompare(String(a.created_at)));
   return `<div class="notes">
-    <form class="note-new" data-submit="addNote">
+    <form class="note-new card" data-submit="addNote">
       <textarea name="body" rows="3" placeholder="Anotação, decisão de reunião, feedback do cliente…"></textarea>
       <button class="btn btn-primary" type="submit">${icon('plus', 16)} Anotar</button>
     </form>
     ${notes.length ? `<ul class="note-list">${notes.map(n => {
       const u = profile(n.author_id);
       const mine = n.author_id === me().id || isSocio();
-      return `<li class="note ${n.pinned ? 'pinned' : ''}">
+      return `<li class="note card ${n.pinned ? 'pinned' : ''}">
         <div class="note-meta">${avatar(u, 24)} <strong>${esc(u?.name || '')}</strong> <small class="muted">${ago(n.created_at)}</small>
           <span class="spacer"></span>
           <button class="icon-btn ${n.pinned ? 'on' : ''}" data-act="pinNote" data-id="${esc(n.id)}" title="${n.pinned ? 'Desafixar' : 'Fixar'}">${icon('pin', 16)}</button>
@@ -404,7 +411,7 @@ function teamPanel(p) {
   const members = store.where('project_members', m => m.project_id === p.id);
   const manage = ['socio', 'producao'].includes(role());
   return `<section class="card">
-    <div class="card-head"><h2>Equipe do projeto</h2>${manage ? `<button class="btn btn-ghost btn-sm" data-act="addMember">${icon('plus', 16)} Adicionar</button>` : ''}</div>
+    <div class="card-head"><h2>Integrantes do projeto</h2>${manage ? `<button class="btn btn-ghost btn-sm" data-act="addMember">${icon('plus', 16)} Adicionar</button>` : ''}</div>
     <p class="muted">Freelas só enxergam os projetos em que estão escalados.</p>
     <ul class="member-list">${members.map(m => {
       const u = profile(m.user_id);
@@ -428,39 +435,47 @@ function financePanel(p) {
     <div><small class="muted">Recebido</small><div class="h3 ok">${money(rec)}</div></div>
     <div><small class="muted">A receber</small><div class="h3">${money(total - rec)}</div></div></div>
     ${progressBar(rec, total || 1)}
-    ${rows.length ? `<table class="table mt-16"><thead><tr><th>Descrição</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>
+    <p class="fine">Parcelas "previstas" seguem o contrato. Só contam no caixa quando o cliente paga e você marca como recebido.</p>
+    ${rows.length ? `<div class="table-wrap"><table class="table mt-16"><thead><tr><th>Descrição</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>
       ${rows.map(r => `<tr><td>${esc(r.description)}</td><td>${date(r.due_date)}</td><td>${money(r.amount)}</td>
       <td><span class="tag tag-rev-${esc(r.status)}">${r.status === 'recebido' ? 'Recebido' : 'Previsto'}</span></td>
       <td>${r.status !== 'recebido' ? `<button class="btn btn-ghost btn-sm" data-act="receive" data-id="${esc(r.id)}">Marcar recebido</button>` : ''}</td></tr>`).join('')}
-    </tbody></table>` : '<p class="muted mt-16">Nenhuma parcela lançada.</p>'}
+    </tbody></table></div>` : '<p class="muted mt-16">Nenhuma parcela lançada.</p>'}
   </section>`;
 }
 
 function editProjectModal(p) {
   modal({
     title: 'Editar projeto',
+    wide: true,
     fields: [
-      { name: 'name', label: 'Nome', required: true, value: p.name },
-      { name: 'account_id', label: 'Conta', type: 'select', value: p.account_id,
-        options: store.all('accounts').map(a => [a.id, `${ACCOUNT_KINDS[a.kind].label} · ${a.name}`]) },
+      { name: 'name', label: 'Nome do projeto', required: true, value: p.name },
       { name: 'status', label: 'Status', type: 'select', value: p.status, options: Object.entries(PROJECT_STATUS) },
-      { name: 'track', label: 'Trilha', type: 'select', value: p.track, options: Object.entries(TRACKS) },
-      { name: 'objective', label: 'Objetivo principal', value: p.objective, full: true },
+      { name: 'client_name', label: 'Cliente / marca', value: clientLabel(p) === 'IMAGINE' ? '' : clientLabel(p),
+        list: store.all('accounts').filter(a => a.kind !== 'imagine').map(a => a.name) },
+      { name: 'kind', label: 'Tipo', type: 'chips', value: projectKind(p), options: KIND_CHIPS },
+      { name: 'track', label: 'Serviço', type: 'chips', value: p.track, options: trackChips(), full: true, help: 'Trocar o serviço não muda as tarefas que já existem.' },
+      { name: 'objective', label: 'Objetivo principal', type: 'textarea', rows: 2, value: p.objective },
       { name: 'start_date', label: 'Início', type: 'date', value: p.start_date },
       { name: 'due_date', label: 'Prazo', type: 'date', value: p.due_date },
       ...(seesMoney() ? [{ name: 'value', label: 'Valor (R$)', type: 'money', value: p.value }] : []),
-      { name: 'cover_color', label: 'Cor', type: 'color', value: p.cover_color || '#12328C' },
-      { name: 'cover_url', label: 'Foto de capa', type: 'image', value: p.cover_url || '', help: 'Aparece no card do projeto. A foto é reduzida automaticamente.' },
+      { name: 'cover_color', label: 'Cor do projeto', type: 'color', value: p.cover_color || '#1D5CF0' },
+      { name: 'cover_url', label: 'Foto de capa', type: 'image', crop: 1.6, value: p.cover_url || '', help: 'Use "Ajustar imagem" para reenquadrar.' },
     ],
+    onOpen: wireProjectForm,
     danger: isSocio() ? { label: 'Excluir projeto', confirm: `Excluir "${p.name}" com todas as etapas, tarefas e notas?`, onClick: () => deleteProject(p) } : null,
-    async onSubmit(v) { await store.update('projects', p.id, v); },
+    async onSubmit(v) {
+      const keep = account(p.account_id)?.kind !== 'imagine' && clientLabel(p) === v.client_name ? p.account_id : null;
+      await store.update('projects', p.id, { ...v, ...resolveClient(v, keep) });
+    },
   });
 }
 
 async function deleteProject(p) {
-  for (const t of ['tasks', 'stages', 'notes', 'files', 'project_members']) {
+  for (const t of ['tasks', 'stages', 'notes', 'files', 'project_members', 'moodboard', 'brand_assets']) {
     for (const r of store.where(t, x => x.project_id === p.id)) await store.remove(t, r.id);
   }
   await store.remove('projects', p.id);
   location.hash = '#/projetos';
 }
+

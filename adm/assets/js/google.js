@@ -1,8 +1,9 @@
-// Integração com Google Agenda via Google Identity Services (OAuth no navegador).
+// Integração com Google (Agenda e planilha de respostas do briefing) via Google Identity Services.
 // Precisa de CONFIG.GOOGLE_CLIENT_ID. O token fica só na sessão do navegador.
 import { CONFIG } from './config.js';
 
-const SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+// Um login cobre os dois usos. A planilha exige a Google Sheets API ativada no mesmo projeto do Google Cloud.
+const SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/spreadsheets.readonly';
 const KEY = 'imagine-hub:gtoken';
 const API = 'https://www.googleapis.com/calendar/v3';
 
@@ -14,10 +15,11 @@ export const configured = () => !!CONFIG.GOOGLE_CLIENT_ID;
 function readToken() {
   try {
     const t = JSON.parse(sessionStorage.getItem(KEY) || 'null');
-    return t && t.exp > Date.now() ? t.token : null;
+    return t && t.exp > Date.now() ? t : null;
   } catch { return null; }
 }
-export const connected = () => !!readToken();
+// scope: trecho do escopo exigido (ex.: 'spreadsheets'); tokens antigos só tinham a Agenda
+export const connected = (scope = '') => { const t = readToken(); return !!t && (!scope || String(t.scope || '').includes(scope)); };
 
 function loadGis() {
   if (window.google?.accounts?.oauth2) return Promise.resolve();
@@ -38,7 +40,7 @@ export async function connect() {
       scope: SCOPE,
       callback: r => {
         if (r.error) return reject(new Error(r.error));
-        try { sessionStorage.setItem(KEY, JSON.stringify({ token: r.access_token, exp: Date.now() + (r.expires_in - 60) * 1000 })); } catch { /* noop */ }
+        try { sessionStorage.setItem(KEY, JSON.stringify({ token: r.access_token, scope: r.scope || '', exp: Date.now() + (r.expires_in - 60) * 1000 })); } catch { /* noop */ }
         cache = { key: '', items: [] };
         resolve();
       },
@@ -48,14 +50,14 @@ export async function connect() {
 }
 
 export function disconnect() {
-  const t = readToken();
+  const t = readToken()?.token;
   if (t && window.google?.accounts?.oauth2) window.google.accounts.oauth2.revoke(t);
   try { sessionStorage.removeItem(KEY); } catch { /* noop */ }
   cache = { key: '', items: [] };
 }
 
 async function api(path, opts = {}) {
-  const token = readToken();
+  const token = readToken()?.token;
   if (!token) throw new Error('Conecte o Google Agenda de novo.');
   const r = await fetch(API + path, { ...opts, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts.headers || {}) } });
   if (r.status === 401) { disconnect(); throw new Error('Sessão do Google expirou.'); }
@@ -89,4 +91,16 @@ export async function createEvent({ title, start, end, description = '' }) {
 export async function deleteEvent(id) {
   await api(`/calendars/${encodeURIComponent(CONFIG.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(id)}`, { method: 'DELETE' });
   cache = { key: '', items: [] };
+}
+
+// Respostas do Forms: lê a planilha ligada ao formulário (linha 1 = perguntas)
+export async function sheetValues(id, range) {
+  const token = readToken()?.token;
+  if (!token) throw new Error('Conecte sua conta Google.');
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(range)}`;
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (r.status === 401) { disconnect(); throw new Error('Sessão do Google expirou. Tente de novo.'); }
+  if (r.status === 403) throw new Error('Sem acesso à planilha. Ative a Google Sheets API no Google Cloud e entre com a conta dona do Forms.');
+  if (!r.ok) throw new Error(`Planilha: erro ${r.status}`);
+  return (await r.json()).values || [];
 }

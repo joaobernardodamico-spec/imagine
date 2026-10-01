@@ -1,7 +1,7 @@
 // "Hoje" — o que importa agora para quem está logado.
 import { store } from '../store.js';
 import { GOAL_METRICS, STAGES } from '../config.js';
-import { me, can, visibleProjects, myOpenTasks, toggleTask, metricActual, account, progressOf } from '../ops.js';
+import { me, can, visibleProjects, myOpenTasks, toggleTask, metricActual, account, progressOf, clientLabel } from '../ops.js';
 import { xpOf, levelOf, statsOf, badgesOf } from '../game.js';
 import { esc, icon, money, num, date, relDays, time, thisMonth, progressBar, pct, empty } from '../util.js';
 import { projectCard, feedItem } from './components.js';
@@ -137,7 +137,7 @@ function stageBoard(projects) {
     <thead><tr><th>Projeto</th>${STAGES.map(s => `<th title="${esc(s.name)}"><span>${s.n}</span><em>${esc(s.name)}</em></th>`).join('')}</tr></thead>
     <tbody>${projects.map(p => {
       const pr = progressOf(p.id);
-      return `<tr><td><a href="#/projetos/${esc(p.id)}"><strong>${esc(p.name)}</strong><small>${esc(account(p.account_id)?.name || '')}</small></a></td>
+      return `<tr><td><a href="#/projetos/${esc(p.id)}"><strong>${esc(p.name)}</strong><small>${esc(clientLabel(p))}</small></a></td>
         ${STAGES.map(s => {
           const st = pr.stages.find(x => x.key === s.key)?.status || 'pendente';
           return `<td class="sb-cell sb-${st}"><span></span></td>`;

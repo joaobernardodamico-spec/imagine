@@ -11,7 +11,7 @@ import { seed } from './seed.js';
 export const TABLES = [
   'profiles', 'accounts', 'projects', 'project_members', 'stages', 'tasks',
   'notes', 'files', 'leads', 'revenue', 'goals', 'events', 'xp_events', 'nps',
-  'alliances', 'aftersales', 'moodboard',
+  'alliances', 'aftersales', 'moodboard', 'brand_assets',
 ];
 
 const LS_DATA = 'imagine-hub:data:v2';
@@ -25,7 +25,7 @@ export const uid = () =>
 
 export const store = {
   demo: DEMO,
-  data: Object.fromEntries(TABLES.map(t => [t, []])),
+  data: emptyData(),
   user: null,
 
   on(fn) { listeners.add(fn); return () => listeners.delete(fn); },
@@ -40,7 +40,7 @@ export const store = {
   async init() {
     if (DEMO) {
       const raw = safeGet(LS_DATA);
-      this.data = raw ? { ...this.data, ...JSON.parse(raw) } : seed();
+      this.data = { ...emptyData(), ...(raw ? JSON.parse(raw) : seed()) };
       migrateLeads(this.data.leads);
       persist(this.data);
       const id = safeGet(LS_USER);
@@ -128,7 +128,8 @@ export const store = {
     return recs;
   },
 
-  async update(table, id, patch) {
+  // silent: grava sem redesenhar a tela (campos que salvam sozinhos ao sair do campo)
+  async update(table, id, patch, { silent = false } = {}) {
     const row = this.find(table, id);
     if (!row) return null;
     if (!DEMO) {
@@ -137,7 +138,7 @@ export const store = {
     }
     Object.assign(row, patch);
     if (DEMO) persist(this.data);
-    this.emit({ table, op: 'update', row });
+    if (!silent) this.emit({ table, op: 'update', row });
     return row;
   },
 
@@ -154,7 +155,7 @@ export const store = {
   // ---------- utilidades do modo demo ----------
   resetDemo() {
     safeDel(LS_DATA);
-    this.data = seed(); persist(this.data);
+    this.data = { ...emptyData(), ...seed() }; persist(this.data);
     this.emit({ reset: true });
   },
 
@@ -179,3 +180,5 @@ function persist(data) { safeSet(LS_DATA, JSON.stringify(data)); }
 function safeGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
 function safeSet(k, v) { try { localStorage.setItem(k, v); } catch { /* storage cheio ou bloqueado */ } }
 function safeDel(k) { try { localStorage.removeItem(k); } catch { /* noop */ } }
+// Toda tabela existe no cache, mesmo as que o seed ou um backup antigo não trazem
+function emptyData() { return Object.fromEntries(TABLES.map(t => [t, []])); }

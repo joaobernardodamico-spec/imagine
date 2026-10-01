@@ -1,4 +1,4 @@
-# IMAGINE Hub · `/adm`
+# ATLAS · o CRM da IMAGINE · `/adm`
 
 Organizador interno da IMAGINE: projetos, processos, CRM, financeiro, metas, agenda e gamificação.
 É HTML, CSS e JS puros (módulos ES), sem build. Funciona em `www.imagineconcept.com.br/adm`.
@@ -16,7 +16,8 @@ adm/
 │       ├── store.js         dados: Supabase ou modo demo (localStorage)
 │       ├── ops.js           regras: permissões, etapas, CRM, metas
 │       ├── game.js          XP, níveis, conquistas, ranking
-│       ├── google.js        Google Agenda
+│       ├── google.js        Google Agenda + planilha de respostas do briefing
+│       ├── color.js         conversão de cores (HEX, RGB, CMYK, HSL) e contraste
 │       ├── seed.js          dados de exemplo do modo demo
 │       └── views/           uma tela por arquivo
 └── supabase/schema.sql      banco + segurança por papel (RLS)
@@ -28,6 +29,7 @@ Sem configurar nada, o Hub roda com dados de exemplo salvos **só no seu navegad
 Na tela de login dá pra entrar como cada papel (sócio, comercial, produção, freela) e ver a visão de cada um.
 
 Para testar local: `node .claude/serve.mjs` e abra `http://localhost:5510/adm/`.
+Com `?demo` no endereço (`http://localhost:5510/adm/?demo`) ele entra em modo demo mesmo com o Supabase configurado: dá pra testar sem mexer no banco real.
 
 ## Colocar pra valer (Supabase, grátis)
 
@@ -57,6 +59,17 @@ Freela não lê CRM nem financeiro nem projetos alheios **no banco**, e não só
 
 Na Agenda, clique em **Conectar Google Agenda**. O Hub lê seus eventos e cria novos direto no Google.
 O token fica só na sessão do navegador.
+
+## Briefing do Google Forms
+
+O briefing do projeto usa as mesmas perguntas do Forms "BRIEFING — IMAGINE CONCEPT" (lista em `BRIEFING_FORM`, no `config.js`).
+Dá pra preencher dentro do ATLAS numa ligação, ou puxar o que o cliente respondeu pelo Forms:
+
+1. No mesmo projeto do Google Cloud da Agenda: **APIs & Services → Library** → ative **Google Sheets API**.
+2. No projeto, aba **Briefing** → **Importar do Forms**. Entre com a conta dona do Forms e escolha a resposta.
+
+A ligação é pelo número da pergunta (1.1, 2.3…) no cabeçalho da planilha. Se o Forms mudar, ajuste `BRIEFING_FORM`.
+Para o botão "Link do Forms" aparecer, cole o link público em `BRIEFING_SHEET.formUrl`.
 
 ## Hospedar no seu próprio servidor
 
