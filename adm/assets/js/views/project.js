@@ -31,9 +31,9 @@ export default {
     const bf = briefingFilled(p);
 
     const TABS = [
-      ['visao', 'Visão geral'], ['briefing', 'Briefing', `${bf.done}/${bf.total}`], ['moodboard', 'Moodboard', moodItems(p.id).length || null],
-      ['marca', 'Marca', `${brandProgress(p).pct}%`], ['notas', 'Notas', nNotes || null], ['equipe', 'Equipe'],
-      ...(seesMoney() ? [['financeiro', 'Financeiro']] : []),
+      ['visao', 'Visão geral', null, 'home'], ['briefing', 'Briefing', `${bf.done}/${bf.total}`, 'brief'], ['moodboard', 'Moodboard', moodItems(p.id).length || null, 'image'],
+      ['marca', 'Marca', `${brandProgress(p).pct}%`, 'brand'], ['notas', 'Notas', nNotes || null, 'note'], ['equipe', 'Equipe', null, 'users'],
+      ...(seesMoney() ? [['financeiro', 'Financeiro', null, 'wallet']] : []),
     ];
     const selKey = tab === 'visao' ? (STAGES.some(s => s.key === sub) ? sub : pr.current?.key || 'entrega') : null;
 
@@ -169,6 +169,7 @@ function header(p, pr, edit) {
       <h1>${esc(p.name)}</h1>
       ${p.objective ? `<p class="phead-obj">${esc(p.objective)}</p>` : (edit ? `<button class="link" data-act="editProject">${icon('plus', 14)} Definir objetivo principal</button>` : '')}
     </div>
+    ${nextCard(p, pr, edit)}
   </header>`;
 }
 
@@ -185,10 +186,6 @@ function ring(pct) {
 // ------------------------------------------------------------
 function journey(p, pr, selKey) {
   return `<section class="journey card">
-    <div class="jprog">
-      ${ring(pr.pct)}
-      <div class="jprog-nums"><strong>${pr.doneTasks}<small> de ${pr.totalTasks}</small></strong><span>tarefas</span><em>${pr.doneStages} de 9 etapas</em></div>
-    </div>
     <div class="jmain">
     <div class="journey-head"><h2>Jornada do projeto</h2></div>
     <ol class="jsteps">${STAGES.map(def => {
@@ -203,6 +200,10 @@ function journey(p, pr, selKey) {
         </a>
       </li>`;
     }).join('')}</ol>
+    </div>
+    <div class="jprog">
+      ${ring(pr.pct)}
+      <div class="jprog-nums"><strong>${pr.doneTasks}<small> de ${pr.totalTasks}</small></strong><span>tarefas</span><em>${pr.doneStages} de 9 etapas</em></div>
     </div>
   </section>`;
 }
@@ -222,36 +223,30 @@ function panel(tab, sub, p, edit, selKey) {
 // ------------------------------------------------------------
 // Próximo passo + lembretes (coluna lateral)
 // ------------------------------------------------------------
-function nextCard(p, pr) {
-  const def = pr.currentDef;
-  if (!def) return `<section class="next-card"><div class="kicker">Projeto entregue</div><h3>Até o próximo projeto!</h3>
-    <p>As 9 etapas foram concluídas.</p><a class="btn btn-primary btn-sm" href="#/projetos/${esc(p.id)}/marca/manual">${icon('book', 15)} Manual completo</a></section>`;
-  const nx = def.next || {};
-  return `<section class="next-card">
-    <div class="kicker">Próximo passo · ${def.n}. ${esc(def.name)}</div>
-    <h3>${esc((nx.title || def.name).replace('{name}', p.name))}</h3>
-    <p>${esc(nx.text || def.why)}</p>
-    ${nx.cta ? `<a class="btn btn-primary btn-sm" href="#/projetos/${esc(p.id)}/${esc(nx.cta[0])}">${esc(nx.cta[1])} ${icon('arrow', 14)}</a>` : ''}
-    <span class="next-cloud" aria-hidden="true"></span>
-  </section>`;
-}
-
 let showDoneRem = false;
-function remindersCard(p, edit) {
+function nextCard(p, pr, edit) {
+  const def = pr.currentDef;
+  const nx = def?.next || {};
   const list = p.reminders || [];
   const open = list.filter(r => !r.done);
   const done = list.filter(r => r.done);
-  return `<section class="card reminders ${open.length ? 'has-open' : ''}">
-    <div class="card-head">
-      <h2>${icon('bell', 17)} Lembretes ${open.length ? `<span class="count">${open.length}</span>` : ''}</h2>
-      ${done.length ? `<button class="link" data-act="toggleDoneReminders">${showDoneRem ? 'Esconder' : 'Ver'} ${done.length} feito${done.length > 1 ? 's' : ''}</button>` : ''}
+  const shown = [...open, ...(showDoneRem ? done : [])];
+  return `<section class="next-card">
+    <div class="kicker">${def ? `Próximo passo · ${def.n}. ${esc(def.name)}` : 'Projeto entregue'}</div>
+    <h3>${def ? esc((nx.title || def.name).replace('{name}', p.name)) : 'Até o próximo projeto!'}</h3>
+    <p>${def ? esc(nx.text || def.why) : 'As 9 etapas foram concluídas.'}</p>
+    ${def ? (nx.cta ? `<a class="btn btn-primary btn-sm" href="#/projetos/${esc(p.id)}/${esc(nx.cta[0])}">${esc(nx.cta[1])} ${icon('arrow', 14)}</a>` : '')
+      : `<a class="btn btn-primary btn-sm" href="#/projetos/${esc(p.id)}/marca/manual">${icon('book', 15)} Manual completo</a>`}
+    <div class="nx-rem">
+      <div class="nx-rem-head">${icon('bell', 14)}<span>Lembretes</span>${open.length ? `<b>${open.length}</b>` : ''}
+        ${done.length ? `<button data-act="toggleDoneReminders">${showDoneRem ? 'Esconder' : 'Ver'} ${done.length} feito${done.length > 1 ? 's' : ''}</button>` : ''}</div>
+      ${shown.length ? `<ul class="nx-rem-list">${shown.map(r => `<li class="${r.done ? 'done' : ''}">
+        <button class="checkbox" data-act="toggleReminder" data-id="${esc(r.id)}" aria-label="${r.done ? 'Desmarcar' : 'Concluir'}" ${edit ? '' : 'disabled'}>${icon('check', 12)}</button>
+        <span>${esc(r.text)}</span>
+        ${edit ? `<button class="icon-btn" data-act="delReminder" data-id="${esc(r.id)}" title="Excluir">${icon('x', 12)}</button>` : ''}</li>`).join('')}</ul>` : ''}
+      ${edit ? `<form class="rem-add" data-submit="addReminder"><input name="text" placeholder="+ Novo lembrete (Enter)" aria-label="Novo lembrete"></form>` : ''}
     </div>
-    ${list.length ? `<ul class="rem-list">${[...open, ...(showDoneRem ? done : [])].map(r => `<li class="${r.done ? 'done' : ''}">
-      <button class="checkbox" data-act="toggleReminder" data-id="${esc(r.id)}" aria-label="${r.done ? 'Desmarcar' : 'Concluir'}" ${edit ? '' : 'disabled'}>${icon('check', 14)}</button>
-      <span>${esc(r.text)}</span>
-      ${edit ? `<button class="icon-btn" data-act="delReminder" data-id="${esc(r.id)}" title="Excluir">${icon('x', 14)}</button>` : ''}
-    </li>`).join('')}</ul>` : `<div class="rem-empty">${icon('bell', 22)}<strong>Nenhum lembrete ainda.</strong><small>Pedir acessos, enviar contrato, confirmar fonte…</small></div>`}
-    ${edit ? `<form class="rem-add" data-submit="addReminder"><input name="text" placeholder="+ Adicionar lembrete (Enter)" aria-label="Novo lembrete"></form>` : ''}
+    <span class="next-cloud" aria-hidden="true"></span>
   </section>`;
 }
 
@@ -355,8 +350,6 @@ function stagesPanel(p, edit, key) {
     </section>
     <aside class="stack">
       ${quickCard(p)}
-      ${nextCard(p, pr)}
-      ${remindersCard(p, edit)}
       ${extraCards(p, edit)}
     </aside>
   </div>`;

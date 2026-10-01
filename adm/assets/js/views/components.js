@@ -63,8 +63,8 @@ export function statTile(label, value, sub = '', extra = '') {
 }
 
 export function tabs(items, active, base) {
-  return `<nav class="tabs" role="tablist">${items.map(([key, label, count]) =>
-    `<a role="tab" href="#/${base}/${esc(key)}" class="tab ${key === active ? 'active' : ''}" aria-selected="${key === active}">${esc(label)}${count != null ? ` <span class="count">${count}</span>` : ''}</a>`).join('')}</nav>`;
+  return `<nav class="tabs" role="tablist">${items.map(([key, label, count, ic]) =>
+    `<a role="tab" href="#/${base}/${esc(key)}" class="tab ${key === active ? 'active' : ''}" aria-selected="${key === active}">${ic ? icon(ic, 16) : ''}${esc(label)}${count != null ? ` <span class="count">${count}</span>` : ''}</a>`).join('')}</nav>`;
 }
 
 export const XP_KIND_LABEL = {
