@@ -276,11 +276,15 @@ footer{background:var(--ink);padding:40px var(--pad-x);display:flex;align-items:
 }
 
 @media(min-width:1400px){
-  :root{--pad-x:80px}
-  section{max-width:1600px;margin:0 auto}
-  .hero-content{max-width:1150px;padding-left:0;padding-right:0;margin:0 auto;width:calc(100% - 160px)}
-  .hero-scroll{right:80px}
-  nav{padding-left:80px;padding-right:80px}
+  /* fundo de cada seção ocupa a tela toda; o conteúdo fica numa coluna de até 1440px */
+  :root{--pad-x:max(80px,calc((100vw - 1440px)/2))}
+  .hero-content{max-width:none}
+  .hero-scroll{right:var(--pad-x)}
+}
+@media(min-width:2200px){
+  :root{--pad-y:140px}
+  .hero-sub{font-size:19px;max-width:620px}
+  .section-body{font-size:17px;max-width:640px}
 }
 
 /* ============ V2: MENU DROPDOWN ============ */
@@ -306,7 +310,21 @@ footer{background:var(--ink);padding:40px var(--pad-x);display:flex;align-items:
   .hero-sub{margin-bottom:28px}
 }
 
-/* ============ V2: SERVICES CAROUSEL ============ */
+/* ============ SERVIÇOS: 3 cards em linha, com imagem ============ */
+.services-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:64px;align-items:stretch}
+.services-row .service-card{background:white;border:1px solid var(--border);padding:0;display:flex;flex-direction:column;overflow:hidden;transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s}
+.services-row .service-card:hover{transform:translateY(-6px);box-shadow:0 22px 50px rgba(18,50,140,.18)}
+.service-media{position:relative;aspect-ratio:4/3;overflow:hidden;background:var(--navy)}
+.service-media img{width:100%;height:100%;object-fit:cover;transition:transform .7s cubic-bezier(.25,.46,.45,.94)}
+.services-row .service-card:hover .service-media img{transform:scale(1.05)}
+.service-media::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,20,60,0) 45%,rgba(10,20,60,.55) 78%,#fff 100%)}
+.service-body{padding:0 32px 36px;margin-top:-34px;position:relative;z-index:1;display:flex;flex-direction:column;flex:1}
+.services-row .service-num{color:var(--sky);font-weight:700;font-size:34px;margin-bottom:10px;text-shadow:0 2px 14px rgba(10,20,60,.45)}
+.services-row .service-title{font-family:var(--font-title);font-size:22px;line-height:1.2;margin-bottom:14px}
+@media(max-width:1024px){.services-row{gap:16px}.service-body{padding:0 22px 28px}.services-row .service-title{font-size:19px}}
+@media(max-width:768px){.services-row{grid-template-columns:1fr;margin-top:40px;gap:20px}.service-media{aspect-ratio:16/10}}
+
+/* ============ V2: SERVICES CAROUSEL (legado) ============ */
 .svc-carousel{margin-top:64px}
 .services-track{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;padding-bottom:4px}
 .services-track::-webkit-scrollbar{display:none}
@@ -438,15 +456,10 @@ footer{background:var(--ink);padding:40px var(--pad-x);display:flex;align-items:
     <hr class="divider">
     <p class="section-body">Não produzimos por produzir. Cada entrega tem um porquê, e é esse porquê que transforma um bom trabalho em algo memorável.</p>
   </div>
-  <div class="carousel svc-carousel reveal">
-    <button class="car-btn car-prev" type="button" aria-label="Anterior"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg></button>
-    <div class="services-track car-track">
-      <div class="service-card"><div class="service-num">01</div><div class="service-title">Identidade Visual e Posicionamento</div><p class="service-desc">Sistemas visuais completos e um posicionamento claro, para a sua marca comunicar quem é antes mesmo de dizer qualquer coisa.</p><ul class="service-list"><li>Logotipo</li><li>Tipografia e paleta</li><li>Manual de marca</li><li>Posicionamento</li><li>Voz e narrativa</li></ul><a class="service-go" href="#briefing" data-solucao="Identidade Visual e Posicionamento">Quero esta solução →</a></div>
-      <div class="service-card"><div class="service-num">02</div><div class="service-title">Estratégia de Vendas e Marketing</div><p class="service-desc">Entendemos onde você está, onde quer chegar e o que o mercado espera. Depois traçamos o caminho e criamos a comunicação que vende.</p><ul class="service-list"><li>Estratégia de conteúdo</li><li>Campanhas</li><li>Copywriting</li><li>Funil de vendas</li><li>Redes sociais</li></ul><a class="service-go" href="#briefing" data-solucao="Estratégia de Vendas e Marketing">Quero esta solução →</a></div>
-      <div class="service-card"><div class="service-num">03</div><div class="service-title">Desenvolvimento Web</div><p class="service-desc">Sites e landing pages rápidos, bonitos e pensados para converter, com a identidade da sua marca em cada detalhe.</p><ul class="service-list"><li>Sites institucionais</li><li>Landing pages</li><li>UX/UI</li><li>Responsivo</li><li>SEO básico</li></ul><a class="service-go" href="#briefing" data-solucao="Desenvolvimento Web">Quero esta solução →</a></div>
-    </div>
-    <button class="car-btn car-next" type="button" aria-label="Próximo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></button>
-    <div class="car-dots"></div>
+  <div class="services-row reveal">
+      <div class="service-card"><div class="service-media"><img src="assets/img/servico-identidade.webp" alt="Identidade visual: uma nuvem no lugar da cabeça de um executivo, sob um guarda-chuva" loading="lazy" width="1254" height="1254"></div><div class="service-body"><div class="service-num">01</div><div class="service-title">Identidade Visual e Posicionamento</div><p class="service-desc">Sistemas visuais completos e um posicionamento claro, para a sua marca comunicar quem é antes mesmo de dizer qualquer coisa.</p><ul class="service-list"><li>Logotipo</li><li>Tipografia e paleta</li><li>Manual de marca</li><li>Posicionamento</li><li>Voz e narrativa</li></ul><a class="service-go" href="#briefing" data-solucao="Identidade Visual e Posicionamento">Quero esta solução →</a></div></div>
+      <div class="service-card"><div class="service-media"><img src="assets/img/servico-estrategia.webp" alt="Estratégia: um executivo diante de caminhos luminosos que levam a um funil de vendas" loading="lazy" width="1254" height="1254"></div><div class="service-body"><div class="service-num">02</div><div class="service-title">Estratégia de Vendas e Marketing</div><p class="service-desc">Entendemos onde você está, onde quer chegar e o que o mercado espera. Depois traçamos o caminho e criamos a comunicação que vende.</p><ul class="service-list"><li>Estratégia de conteúdo</li><li>Campanhas</li><li>Copywriting</li><li>Funil de vendas</li><li>Redes sociais</li></ul><a class="service-go" href="#briefing" data-solucao="Estratégia de Vendas e Marketing">Quero esta solução →</a></div></div>
+      <div class="service-card"><div class="service-media"><img src="assets/img/servico-web.webp" alt="Desenvolvimento web: um notebook flutuando entre nuvens exibindo o site da IMAGINE" loading="lazy" width="1254" height="1254"></div><div class="service-body"><div class="service-num">03</div><div class="service-title">Desenvolvimento Web</div><p class="service-desc">Sites e landing pages rápidos, bonitos e pensados para converter, com a identidade da sua marca em cada detalhe.</p><ul class="service-list"><li>Sites institucionais</li><li>Landing pages</li><li>UX/UI</li><li>Responsivo</li><li>SEO básico</li></ul><a class="service-go" href="#briefing" data-solucao="Desenvolvimento Web">Quero esta solução →</a></div></div>
   </div>
 </section>
 
