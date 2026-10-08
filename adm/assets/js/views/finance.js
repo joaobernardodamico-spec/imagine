@@ -1,7 +1,7 @@
 // Financeiro simplificado: receita por projeto + recorrente, previsto x recebido.
 import { store } from '../store.js';
 import { ACCOUNT_KINDS } from '../config.js';
-import { me, account, receive } from '../ops.js';
+import { me, account, receive, revenueToProject } from '../ops.js';
 import { esc, icon, money, date, modal, today, thisMonth, inMonth, empty } from '../util.js';
 import { pageHead, statTile } from './components.js';
 
@@ -129,17 +129,19 @@ function revenueModal(r = {}) {
       ...(isNew ? [{ name: 'months', label: 'Repetir por (meses)', type: 'number', value: 1, help: 'Para recorrente: gera um lançamento por mês.' }] : []),
     ],
     danger: isNew ? null : { label: 'Excluir', confirm: 'Excluir este lançamento?', onClick: () => store.remove('revenue', r.id) },
+    // projeto ligado ao lançamento acompanha o valor
     async onSubmit(v) {
       const { months = 1, ...rest } = v;
       if (!rest.account_id && rest.project_id) rest.account_id = store.find('projects', rest.project_id)?.account_id || null;
       if (rest.status === 'recebido') rest.paid_at = r.paid_at || today();
       else rest.paid_at = null;
-      if (!isNew) return store.update('revenue', r.id, rest);
+      if (!isNew) { await store.update('revenue', r.id, rest); return revenueToProject(rest.project_id); }
       const n = Math.max(1, Math.min(36, Number(months) || 1));
       await store.insertMany('revenue', Array.from({ length: n }, (_, i) => {
         const d = new Date(rest.due_date + 'T12:00'); d.setMonth(d.getMonth() + i);
         return { ...rest, due_date: d.toISOString().slice(0, 10), status: i === 0 ? rest.status : 'previsto', paid_at: i === 0 ? rest.paid_at : null, owner_id: me().id };
       }));
+      await revenueToProject(rest.project_id);
     },
   });
 }

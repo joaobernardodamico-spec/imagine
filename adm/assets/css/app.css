@@ -1900,3 +1900,61 @@ body.nav-hidden .nav-reopen { background: var(--surface) !important; border-radi
 .sidebar .atlas-word { width: 92px !important; height: 30px !important; margin-left: 2px !important;
   -webkit-mask-image: url("../img/atlas-word-navy.png") !important; mask-image: url("../img/atlas-word-navy.png") !important;
   -webkit-mask-size: contain !important; mask-size: contain !important; -webkit-mask-position: left center !important; mask-position: left center !important; }
+
+/* ==========================================================
+   Projetos v3: números no topo, mapa com clientes por serviço e ecossistema clicável
+   ========================================================== */
+.proj-top { align-items: center; }
+.proj-top-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+.proj-kpis { display: flex; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
+.proj-kpis .kpi { flex: 0 0 auto; padding: 10px 16px; min-width: 120px; box-shadow: inset -1px 0 0 var(--line); }
+.proj-kpis .kpi:last-child { box-shadow: none; }
+.proj-kpis .stat-label { font-size: 11.5px; }
+.proj-kpis .kpi-value { font-size: 20px; margin: 2px 0 0; }
+.proj-kpis .stat-sub, .proj-kpis .kpi-delta { font-size: 11px; }
+
+.eco-map-v2 { display: grid; grid-template-columns: 210px minmax(0, 1.5fr) minmax(0, 1fr); align-items: stretch; }
+.eco-col { padding: 18px; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.eco-col-head { display: flex; align-items: center; justify-content: space-between; }
+.eco-col-head strong { font-family: var(--font-title); font-size: 26px; letter-spacing: -.03em; }
+.eco-map-v2 .svc-strip { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.eco-map-v2 .svc-card { padding: 12px 14px; gap: 12px; box-shadow: none; border-radius: 12px; background: var(--surface-2); border-color: transparent; }
+.eco-map-v2 .svc-card:hover { background: var(--surface); border-color: var(--accent); }
+.eco-map-v2 .svc-card.active { background: var(--accent-soft); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.eco-map-v2 .svc-ic { width: 40px; height: 40px; border-radius: 11px; }
+.eco-map-v2 .svc-txt strong { font-size: 14.5px; }
+.eco-map-v2 .svc-txt em { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eco-map-v2 .svc-n { font-size: 24px; align-self: center; }
+.eco-col-eco { background: linear-gradient(160deg, color-mix(in srgb, var(--k-ecossistema) 8%, var(--surface)), var(--surface)); }
+.eco-projects { display: flex; flex-direction: column; gap: 8px; }
+.eco-proj { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); color: var(--ink); transition: transform .15s, border-color .15s, box-shadow .15s; }
+.eco-proj:hover { transform: translateX(3px); border-color: var(--k-ecossistema); box-shadow: var(--shadow-lg); }
+.eco-proj > .ic { color: var(--ink-3); margin-left: auto; }
+.eco-proj-cover { width: 44px; height: 44px; min-width: 44px; border-radius: 10px; display: grid; place-items: center; color: #fff; font-family: var(--font-title); font-weight: 700; font-size: 18px;
+  background: linear-gradient(135deg, var(--cover), color-mix(in srgb, var(--cover) 50%, #fff)) center / cover no-repeat; }
+.eco-proj-txt { display: flex; flex-direction: column; min-width: 0; }
+.eco-proj-txt strong { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eco-proj-txt small { font-size: 12px; color: var(--ink-2); }
+.eco-empty { font-size: 13px; color: var(--ink-3); }
+
+.proj-list { margin-top: 22px; }
+.proj-list-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.proj-list-head h2 { font-size: 22px; display: flex; align-items: center; gap: 8px; }
+.proj-list-head .kicker { margin-bottom: 2px; }
+.proj-list-head select { width: auto; }
+@media (max-width: 1100px) {
+  .eco-map-v2 { grid-template-columns: 1fr; }
+  .eco-col { border-left: 0; border-top: 1px solid var(--line); }
+  .proj-top-right { justify-content: flex-start; width: 100%; }
+  .proj-kpis { overflow-x: auto; max-width: 100%; }
+}
+
+/* teste: menu lateral em Sora */
+.nav-item, .nav-group { font-family: var(--font-title); }
+.nav-item { font-weight: 700; font-size: 14px; letter-spacing: -.01em; }
+
+/* ícones próprios do ATLAS no menu */
+.nav-ic { width: 22px; height: 22px; min-width: 22px; display: inline-block; background: currentColor; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.nav-item .nav-ic { color: var(--ink-2); }
+.nav-item:hover .nav-ic { color: var(--ink); }
+.nav-item.active .nav-ic { color: var(--accent); }

@@ -23,14 +23,14 @@ import team from './views/team.js';
 
 const NAV = [
   { group: 'Operação' },
-  { path: '',           mod: 'dashboard',  label: 'Hoje',       icon: 'home',     view: dashboard },
-  { path: 'painel',     mod: 'painel',     label: 'Painel',     icon: 'grid',     view: board },
-  { path: 'projetos',   mod: 'projetos',   label: 'Projetos',   icon: 'folder',   view: projects },
-  { path: 'contas',     mod: 'contas',     label: 'Contas',     icon: 'layers',   view: accounts },
-  { path: 'leads',      mod: 'leads',      label: 'Leads',      icon: 'funnel',   view: leads },
-  { path: 'posvenda',   mod: 'posvenda',   label: 'Pós-venda',  icon: 'heart',    view: aftersales },
-  { path: 'aliancas',   mod: 'aliancas',   label: 'Alianças',   icon: 'handshake', view: alliances },
-  { path: 'processos',  mod: 'processos',  label: 'Processos',  icon: 'flow',     view: process },
+  { path: '',           mod: 'dashboard',  label: 'Hoje',       icon: 'home', img: 'hoje',     view: dashboard },
+  { path: 'painel',     mod: 'painel',     label: 'Painel',     icon: 'grid', img: 'painel',     view: board },
+  { path: 'projetos',   mod: 'projetos',   label: 'Projetos',   icon: 'folder', img: 'projetos',   view: projects },
+  { path: 'contas',     mod: 'contas',     label: 'Contas',     icon: 'layers', img: 'contas',   view: accounts },
+  { path: 'leads',      mod: 'leads',      label: 'Leads',      icon: 'funnel', img: 'leads',   view: leads },
+  { path: 'posvenda',   mod: 'posvenda',   label: 'Pós-venda',  icon: 'heart', img: 'posvenda',    view: aftersales },
+  { path: 'aliancas',   mod: 'aliancas',   label: 'Alianças',   icon: 'handshake', img: 'aliancas', view: alliances },
+  { path: 'processos',  mod: 'processos',  label: 'Processos',  icon: 'flow', img: 'processos',     view: process },
   { path: 'agenda',     mod: 'agenda',     label: 'Agenda',     icon: 'calendar', view: agenda },
   { group: 'Negócio' },
   { path: 'financeiro', mod: 'financeiro', label: 'Financeiro', icon: 'wallet',   view: finance },
@@ -99,7 +99,7 @@ function renderNav() {
     }
     if (!can(n.mod)) return '';
     const active = r.mod === n.mod;
-    return `<a href="#/${n.path}" class="nav-item ${active ? 'active' : ''}" title="${esc(n.label)}">${icon(n.icon)}<span>${esc(n.label)}</span></a>`;
+    return `<a href="#/${n.path}" class="nav-item ${active ? 'active' : ''}" title="${esc(n.label)}">${n.img ? `<i class="nav-ic" style="-webkit-mask-image:url(assets/img/icons/nav-${n.img}.png);mask-image:url(assets/img/icons/nav-${n.img}.png)" aria-hidden="true"></i>` : icon(n.icon)}<span>${esc(n.label)}</span></a>`;
   }).join('');
 }
 

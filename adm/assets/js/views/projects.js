@@ -23,38 +23,41 @@ export default {
     const count = k => byStatus.filter(p => projectKind(p) === k).length;
     const canCreate = role() !== 'freela';
 
+    const clients = byStatusAll.filter(p => projectKind(p) === 'cliente');
+    const shown = clients.filter(p => state.service === 'todos' || serviceOf(p) === state.service);
+    const svc = MAIN_SERVICES.find(s => s.key === state.service);
+
     return `<div class="page">
-      ${pageHead('Projetos', 'Tudo o que a IMAGINE está construindo, separado pelo que cada coisa é.',
-        canCreate ? `<button class="btn btn-primary" data-act="newProject">${icon('plus')} Novo projeto</button>` : '')}
-
-      ${ecoMap(byStatus)}
-
-      ${servicesStrip(byStatusAll)}
-
-      ${projectsDashboard(all)}
-
-      <div class="toolbar">
-        <div class="row gap-8 wrap">
-        <div class="seg">
-          ${[['todos', 'Todos', byStatus.length], ...KIND_ORDER.map(k => [k, ACCOUNT_KINDS[k].label, count(k)])].map(([k, l, c]) =>
-            `<button type="button" class="seg-btn ${state.kind === k ? 'active' : ''}" data-act="kind" data-kind="${k}">${esc(l)} <span class="count">${c}</span></button>`).join('')}
+      <header class="page-head proj-top">
+        <div>
+          <h1>Projetos</h1>
+          <p class="page-sub">Tudo o que a IMAGINE está construindo.</p>
         </div>
-        <div class="seg seg-svc" aria-label="Serviço">
-          ${[['todos', 'Todos os serviços', null, byStatusAll.length], ...MAIN_SERVICES.map(s => [s.key, s.short, TRACK_ICONS[s.key], byStatusAll.filter(p => serviceOf(p) === s.key).length]),
-            ...(byStatusAll.some(p => serviceOf(p) === 'outros') ? [['outros', 'Outros', 'layers', byStatusAll.filter(p => serviceOf(p) === 'outros').length]] : [])]
-            .map(([k, l, ic, c]) => `<button type="button" class="seg-btn ${state.service === k ? 'active' : ''}" data-act="service" data-service="${k}">${ic ? icon(ic, 15) : ''}${esc(l)} <span class="count">${c}</span></button>`).join('')}
+        <div class="proj-top-right">
+          ${projectsDashboard(all)}
+          ${canCreate ? `<button class="btn btn-primary" data-act="newProject">${icon('plus')} Novo projeto</button>` : ''}
         </div>
-        </div>
-        <div class="row gap-8">
-          <label class="search">${icon('search', 16)}<input type="search" placeholder="Buscar projeto ou conta" value="${esc(state.q)}" data-input="search"></label>
-          <select data-change="status" aria-label="Status">
-            ${[['ativo', 'Em andamento'], ['entregue', 'Entregues'], ['pausado', 'Pausados'], ['todos', 'Todos os status']].map(([v, l]) =>
-              `<option value="${v}" ${state.status === v ? 'selected' : ''}>${l}</option>`).join('')}
-          </select>
-        </div>
-      </div>
+      </header>
 
-      ${(state.kind === 'todos' ? KIND_ORDER : [state.kind]).map(k => section(k, byStatus.filter(p => projectKind(p) === k))).join('')}
+      ${ecoMap(byStatusAll)}
+
+      <section class="proj-list">
+        <header class="proj-list-head">
+          <div>
+            <span class="kicker">${svc ? 'Serviço' : 'Clientes'}</span>
+            <h2>${svc ? esc(svc.label) : 'Todos os projetos de clientes'} <span class="count">${shown.length}</span></h2>
+          </div>
+          <div class="row gap-8 wrap">
+            ${svc ? `<button class="btn btn-ghost btn-sm" data-act="service" data-service="todos">${icon('x', 14)} Ver todos</button>` : ''}
+            <label class="search">${icon('search', 16)}<input type="search" placeholder="Buscar projeto" value="${esc(state.q)}" data-input="search"></label>
+            <select data-change="status" aria-label="Status">
+              ${[['ativo', 'Em andamento'], ['entregue', 'Entregues'], ['pausado', 'Pausados'], ['todos', 'Todos os status']].map(([v, l]) =>
+                `<option value="${v}" ${state.status === v ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+          </div>
+        </header>
+        ${shown.length ? `<div class="pgrid">${shown.map(projectCard).join('')}</div>` : empty('Nada por aqui', svc ? 'Nenhum projeto deste serviço agora.' : 'Nenhum projeto de cliente neste status.')}
+      </section>
     </div>`;
   },
 
@@ -82,61 +85,40 @@ function projectsDashboard(all) {
     ...(seesMoney() ? [kpi('Valor em produção', money(act.reduce((s, p) => s + Number(p.value || 0), 0)), { sub: 'soma dos projetos ativos' })] : []),
     kpi('Lembretes pendentes', rem, { sub: 'nos projetos ativos' }),
   ].join('');
-  const where = STAGES.map(s => ({ label: `${s.n}. ${s.name}`, value: act.filter(p => progressOf(p.id).current?.key === s.key).length }));
-  const byTrack = Object.entries(TRACKS).map(([k, l]) => ({ label: l, value: act.filter(p => p.track === k).length })).filter(r => r.value);
-  const byKind = KIND_ORDER.map(k => ({ label: ACCOUNT_KINDS[k].label, value: act.filter(p => projectKind(p) === k).length }));
-  const drop = (key, title, sub, body) => `<section class="drop ${state.open[key] ? 'open' : ''}">
-    <button class="drop-head" data-act="togglePanel" data-key="${key}" aria-expanded="${!!state.open[key]}">
-      <span><strong>${esc(title)}</strong><small>${esc(sub)}</small></span>${icon('chevD', 18)}
-    </button>
-    ${state.open[key] ? `<div class="drop-body">${body}</div>` : ''}
-  </section>`;
-  const top = (rows) => rows.filter(r => r.value).sort((a, b) => b.value - a.value)[0];
-  return `<section class="dash">
-    <div class="dash-kpis">${kpis}</div>
-    <div class="drops">
-      ${drop('onde', 'Onde os projetos estão', top(where) ? `Mais em ${top(where).label}` : 'Nenhum projeto ativo', hbars(where, { fmt: v => `${v}`, empty: 'Nenhum projeto ativo.' }))}
-      ${drop('trilha', 'Por serviço', byTrack.map(r => `${r.label} ${r.value}`).join(' · ') || 'Sem projetos', hbars(byTrack, { fmt: v => `${v}` }))}
-      ${drop('tipo', 'Por tipo', byKind.map(r => `${r.label} ${r.value}`).join(' · '), hbars(byKind, { fmt: v => `${v}` }))}
-    </div>
-  </section>`;
-}
-
-// Os 3 serviços da IMAGINE, logo abaixo do núcleo: quantos projetos, quais, e filtro em um clique
-function servicesStrip(projects) {
-  return `<section class="svc-strip" aria-label="Serviços">${MAIN_SERVICES.map(s => {
-    const list = projects.filter(p => serviceOf(p) === s.key);
-    return `<button type="button" class="svc-card svc-${s.key} ${state.service === s.key ? 'active' : ''}" data-act="service" data-service="${s.key}">
-      <span class="svc-ic">${icon(TRACK_ICONS[s.key], 22)}</span>
-      <span class="svc-txt"><small>Serviço</small><strong>${esc(s.label)}</strong><em>${esc(s.desc)}</em>
-        <span class="svc-names">${list.slice(0, 3).map(p => `<i>${esc(p.name)}</i>`).join('')}${list.length > 3 ? `<i>+${list.length - 3}</i>` : ''}${list.length ? '' : '<i class="muted">Nenhum projeto agora</i>'}</span></span>
-      <b class="svc-n">${list.length}</b>
-    </button>`;
-  }).join('')}</section>`;
+  return `<div class="proj-kpis">${kpis}</div>`;
 }
 
 function ecoMap(projects) {
-  const n = k => projects.filter(p => projectKind(p) === k).length;
-  const visible = new Set(visibleProjects().map(p => p.account_id));
-  const accs = k => {
-    const fromProjects = projects.filter(p => projectKind(p) === k).map(clientLabel);
-    const fromAccounts = k === 'ecossistema' ? store.where('accounts', a => ['ecossistema', 'imagine'].includes(a.kind) && (role() !== 'freela' || visible.has(a.id))).map(a => a.name) : [];
-    return [...new Set([...fromProjects, ...fromAccounts])].map(name => ({ name }));
-  };
-  return `<section class="eco-map" aria-label="Mapa do ecossistema">
+  const clients = projects.filter(p => projectKind(p) === 'cliente');
+  const eco = projects.filter(p => projectKind(p) === 'ecossistema');
+  return `<section class="eco-map eco-map-v2" aria-label="Mapa da IMAGINE">
     <div class="eco-core">
       <span class="kicker">Núcleo</span>
       <img src="assets/img/simbolo.png" alt="" class="eco-symbol">
       <strong>IMAGINE Concept</strong>
       <small>Estúdio · processos · marca-mãe</small>
     </div>
-    <div class="eco-branches">
-      ${KIND_ORDER.map(k => `
-        <button type="button" class="eco-branch eco-${k} ${state.kind === k ? 'active' : ''}" data-act="kind" data-kind="${k}">
-          <div class="eco-branch-head"><span class="tag tag-${k}">${ACCOUNT_KINDS[k].label}</span><strong>${n(k)}</strong></div>
-          <p>${esc(ACCOUNT_KINDS[k].desc)}</p>
-          <div class="eco-names">${accs(k).slice(0, 8).map(a => `<span>${esc(a.name)}</span>`).join('')}${accs(k).length > 8 ? `<span>+${accs(k).length - 8}</span>` : ''}</div>
-        </button>`).join('')}
+    <div class="eco-col eco-col-clients">
+      <div class="eco-col-head"><span class="tag tag-cliente">Cliente</span><strong>${clients.length}</strong></div>
+      <div class="svc-strip">${MAIN_SERVICES.map(s => {
+        const list = clients.filter(p => serviceOf(p) === s.key);
+        return `<button type="button" class="svc-card svc-${s.key} ${state.service === s.key ? 'active' : ''}" data-act="service" data-service="${s.key}" aria-pressed="${state.service === s.key}">
+          <span class="svc-ic">${icon(TRACK_ICONS[s.key], 20)}</span>
+          <span class="svc-txt"><strong>${esc(s.label)}</strong><em>${list.length ? list.slice(0, 2).map(p => esc(p.name)).join(' · ') + (list.length > 2 ? ` +${list.length - 2}` : '') : 'Nenhum projeto agora'}</em></span>
+          <b class="svc-n">${list.length}</b>
+        </button>`;
+      }).join('')}</div>
+    </div>
+    <div class="eco-col eco-col-eco">
+      <div class="eco-col-head"><span class="tag tag-ecossistema">Ecossistema</span><strong>${eco.length}</strong></div>
+      ${eco.length ? `<div class="eco-projects">${eco.map(p => {
+        const pr = progressOf(p.id);
+        return `<a class="eco-proj" href="#/projetos/${esc(p.id)}" style="--cover:${esc(p.cover_color || 'var(--accent)')}">
+          <span class="eco-proj-cover" ${p.cover_url ? `style="background-image:url('${esc(p.cover_url)}')"` : ''}>${p.cover_url ? '' : esc(p.name.trim().charAt(0).toUpperCase())}</span>
+          <span class="eco-proj-txt"><strong>${esc(p.name)}</strong><small>${pr.currentDef ? `${pr.currentDef.n}. ${esc(pr.currentDef.name)}` : 'Entregue'} · ${pr.pct}%</small></span>
+          ${icon('chevR', 16)}
+        </a>`;
+      }).join('')}</div>` : `<p class="eco-empty">Marcas próprias e projetos internos da IMAGINE aparecem aqui.</p>`}
     </div>
   </section>`;
 }

@@ -4,7 +4,7 @@ import { store, uid } from '../store.js';
 import { STAGES, TRACKS, TRACK_ICONS, PROJECT_STATUS, PROJECT_ROLES, SERVICES, JOURNEYS, stagesFor } from '../config.js';
 import {
   me, role, profile, progressOf, stagesOf, tasksOf, toggleTask, completeStage, reopenStage,
-  canEditProject, seesMoney, isSocio, receive, projectKind, clientLabel, account, plannedEnd, paceOf,
+  canEditProject, seesMoney, isSocio, receive, projectKind, clientLabel, account, plannedEnd, paceOf, syncProjectRevenue,
 } from '../ops.js';
 import { award } from '../game.js';
 import { esc, icon, avatar, modal, money, date, relDays, progressBar, empty, ago, toast, safeUrl } from '../util.js';
@@ -474,6 +474,7 @@ function editProjectModal(p) {
     async onSubmit(v) {
       const keep = account(p.account_id)?.kind !== 'imagine' && clientLabel(p) === v.client_name ? p.account_id : null;
       await store.update('projects', p.id, { ...v, ...resolveClient(v, keep) });
+      await syncProjectRevenue(p.id);
     },
   });
 }

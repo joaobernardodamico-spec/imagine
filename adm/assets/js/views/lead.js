@@ -48,7 +48,7 @@ export default {
       const cur = form ? readProposal(form) : (l.proposal || {});
       const entregas = entregasFromPains(l.pains || [], cur.entregas || []);
       if (!entregas.length) return toast('Mapeie as dores primeiro (aba Mapa de dores).', { kind: 'error' });
-      await store.update('leads', id, { proposal: { ...cur, entregas } });
+      await store.update('leads', id, { proposal: { ...cur, entregas }, value: entregas.reduce((s, x) => s + Number(x.valor || 0), 0) || store.find('leads', id).value || 0 });
       toast('Entregas geradas a partir das dores');
     },
     async saveProposal(form, e, { id }) {
@@ -56,7 +56,9 @@ export default {
       const p = readProposal(form);
       const wasSent = ['enviada', 'aceita'].includes(l.proposal?.status);
       if (p.status === 'enviada' && !l.proposal?.sent_at) p.sent_at = new Date().toISOString();
-      await store.update('leads', id, { proposal: { ...(l.proposal || {}), ...p } });
+      const prop = { ...(l.proposal || {}), ...p };
+      const total = (prop.entregas || []).reduce((s, x) => s + Number(x.valor || 0), 0);
+      await store.update('leads', id, { proposal: prop, ...(total ? { value: total } : {}) });
       const idx = LEAD_STAGES.findIndex(s => s.key === l.stage);
       if (!wasSent && ['enviada', 'aceita'].includes(p.status) && idx > -1 && idx < LEAD_STAGES.findIndex(s => s.key === 'proposta')) {
         await moveLead(store.find('leads', id), 'proposta');

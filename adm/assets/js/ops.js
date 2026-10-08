@@ -87,13 +87,8 @@ export async function createProject(v) {
   await store.insertMany('project_members', [...team].map(uid => ({
     project_id: p.id, user_id: uid, role: uid === me().id ? 'lider' : 'design',
   })));
-  if (v.split_revenue && v.value > 0) {
-    const half = Math.round(v.value / 2);
-    await store.insertMany('revenue', [
-      { project_id: p.id, account_id: p.account_id, description: `${p.name} · entrada 50%`, amount: half, kind: 'projeto', status: 'previsto', due_date: p.start_date, owner_id: me().id },
-      { project_id: p.id, account_id: p.account_id, description: `${p.name} · entrega 50%`, amount: v.value - half, kind: 'projeto', status: 'previsto', due_date: p.due_date || p.start_date, owner_id: me().id },
-    ]);
-  }
+  // Todo projeto com valor já nasce com as parcelas no financeiro (50/50 ou valor único)
+  if (v.value > 0) await syncProjectRevenue(p.id, { split: v.split_revenue !== false });
   toast('Projeto criado com as 9 etapas do processo IMAGINE');
   return p;
 }
@@ -138,6 +133,64 @@ export function briefingReady(p) {
   if (p.briefing_done) return true;
   const b = p.briefing || {};
   return Object.keys(b).filter(k => /^q/.test(k) && String(b[k] || '').trim()).length >= 30;
+}
+
+// ------------------------------------------------------------
+// Financeiro ↔ projetos: o valor do projeto e as parcelas andam juntos
+// ------------------------------------------------------------
+const money2 = n => Math.round(Number(n || 0) * 100) / 100;
+
+// Ajusta as parcelas para somarem o valor do projeto. Parcela recebida nunca muda;
+// a diferença vai para as que ainda estão previstas (ou vira uma parcela de saldo).
+export async function syncProjectRevenue(pid, { split = true } = {}) {
+  const p = store.find('projects', pid);
+  if (!p) return;
+  const value = money2(p.value);
+  const rows = store.where('revenue', r => r.project_id === pid);
+  const due = p.due_date || p.start_date || today();
+  const base = { project_id: pid, account_id: p.account_id, kind: 'projeto', status: 'previsto', owner_id: me()?.id || null };
+
+  // conta e vencimento da entrega acompanham o projeto
+  for (const r of rows) {
+    const patch = {};
+    if (r.account_id !== p.account_id) patch.account_id = p.account_id;
+    if (r.status !== 'recebido' && /entrega|saldo/i.test(r.description) && p.due_date && r.due_date !== p.due_date) patch.due_date = p.due_date;
+    if (Object.keys(patch).length) await store.update('revenue', r.id, patch, { silent: true });
+  }
+  if (!value) return;
+  const total = money2(rows.reduce((s, r) => s + Number(r.amount || 0), 0));
+  if (total === value) return;
+
+  if (!rows.length) {
+    const half = money2(value / 2);
+    await store.insertMany('revenue', split
+      ? [{ ...base, description: `${p.name} · entrada 50%`, amount: half, due_date: p.start_date || today() },
+         { ...base, description: `${p.name} · entrega 50%`, amount: money2(value - half), due_date: due }]
+      : [{ ...base, description: `${p.name} · valor total`, amount: value, due_date: due }]);
+    return;
+  }
+  const got = money2(rows.filter(r => r.status === 'recebido').reduce((s, r) => s + Number(r.amount || 0), 0));
+  const open = rows.filter(r => r.status !== 'recebido');
+  const rest = money2(Math.max(0, value - got));
+  if (open.length) {
+    const openTotal = open.reduce((s, r) => s + Number(r.amount || 0), 0) || open.length;
+    let left = rest;
+    for (const [i, r] of open.entries()) {
+      const amt = i === open.length - 1 ? left : money2(rest * ((Number(r.amount) || 1) / openTotal));
+      left = money2(left - amt);
+      await store.update('revenue', r.id, { amount: amt });
+    }
+  } else if (rest > 0) {
+    await store.insert('revenue', { ...base, description: `${p.name} · saldo`, amount: rest, due_date: due });
+  }
+}
+
+// Lançamento feito direto no Financeiro: o projeto passa a valer pelo menos a soma das parcelas
+export async function revenueToProject(pid) {
+  const p = pid && store.find('projects', pid);
+  if (!p) return;
+  const total = money2(store.where('revenue', r => r.project_id === pid).reduce((s, r) => s + Number(r.amount || 0), 0));
+  if (total > money2(p.value)) await store.update('projects', pid, { value: total });
 }
 
 export async function toggleTask(task) {

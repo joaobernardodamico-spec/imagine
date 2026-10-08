@@ -3,7 +3,7 @@
 // que o cliente mandou pelo Forms, direto da planilha de respostas.
 import { store } from '../store.js';
 import { BRIEFING_FORM, BRIEFING_QS, BRIEFING_SHEET, PAYMENT_FORMS } from '../config.js';
-import { saveBriefing } from '../ops.js';
+import { saveBriefing, syncProjectRevenue, seesMoney } from '../ops.js';
 import { esc, icon, modal, toast, progressBar, date, money } from '../util.js';
 import * as google from '../google.js';
 
@@ -112,7 +112,12 @@ async function saveMoney(id, key, sec, { val, pay }) {
   if (pay !== undefined) b[key + '_pay'] = pay;
   const parts = [b[key + '_val'] != null ? money(b[key + '_val']) : '', (b[key + '_pay'] || []).join(', ')].filter(Boolean);
   b[key] = parts.join(' · ');
-  await store.update('projects', id, { briefing: b }, { silent: true });
+  // Investimento informado vira o valor do projeto quando ele ainda não tem valor
+  const patch = { briefing: b };
+  const adopt = val != null && val > 0 && !Number(p.value) && seesMoney();
+  if (adopt) patch.value = val;
+  await store.update('projects', id, patch, { silent: true });
+  if (adopt) { await syncProjectRevenue(id); toast('Valor do projeto e parcelas atualizados no financeiro', { kind: 'success' }); }
   updateCount(id, sec);
 }
 
@@ -148,6 +153,7 @@ export const briefingActions = {
     const p = store.find('projects', id);
     const txt = v ? date(v, { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
     await store.update('projects', id, { due_date: v, briefing: { ...(p.briefing || {}), [el.dataset.key]: txt } }, { silent: true });
+    await syncProjectRevenue(id);
     toast(v ? `Entrega do projeto: ${txt}` : 'Prazo removido');
     updateCount(id, el.dataset.sec);
   },
