@@ -32,7 +32,7 @@ export default {
       </div>
 
       ${goals.length ? `<div class="goal-grid">${goals.map(g => goalCard(g, m, pace)).join('')}</div>`
-        : empty('Sem metas para este mês', isSocio() ? 'Defina as metas e o Hub acompanha sozinho.' : 'Peça para um sócio definir.')}
+        : empty('Sem metas para este mês', isSocio() ? 'Defina as metas e o ATLAS acompanha sozinho.' : 'Peça para um sócio definir.')}
 
       <div class="grid-2 mt-24">
         <section class="card">

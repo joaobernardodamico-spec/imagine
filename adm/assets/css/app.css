@@ -1958,3 +1958,5 @@ body.nav-hidden .nav-reopen { background: var(--surface) !important; border-radi
 .nav-item .nav-ic { color: var(--ink-2); }
 .nav-item:hover .nav-ic { color: var(--ink); }
 .nav-item.active .nav-ic { color: var(--accent); }
+/* briefing: seção começa branca e ganha cor conforme é respondida */
+.brief-nav a { transition: background .5s, color .3s, transform .18s, box-shadow .18s; border-color: var(--line); }

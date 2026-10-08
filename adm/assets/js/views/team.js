@@ -24,7 +24,7 @@ export default {
 
       <section class="card">
         <div class="table-wrap"><table class="table">
-          <thead><tr><th>Pessoa</th><th>Função</th><th>Papel no Hub</th><th>Nível</th><th>Projetos</th><th></th></tr></thead>
+          <thead><tr><th>Pessoa</th><th>Função</th><th>Papel no ATLAS</th><th>Nível</th><th>Projetos</th><th></th></tr></thead>
           <tbody>${people.map(p => {
             const lv = levelOf(xpOf(p.id));
             const n = store.where('project_members', m => m.user_id === p.id).length;

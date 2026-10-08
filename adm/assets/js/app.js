@@ -31,13 +31,13 @@ const NAV = [
   { path: 'posvenda',   mod: 'posvenda',   label: 'Pós-venda',  icon: 'heart', img: 'posvenda',    view: aftersales },
   { path: 'aliancas',   mod: 'aliancas',   label: 'Alianças',   icon: 'handshake', img: 'aliancas', view: alliances },
   { path: 'processos',  mod: 'processos',  label: 'Processos',  icon: 'flow', img: 'processos',     view: process },
-  { path: 'agenda',     mod: 'agenda',     label: 'Agenda',     icon: 'calendar', view: agenda },
+  { path: 'agenda',     mod: 'agenda',     label: 'Agenda',     icon: 'calendar', img: 'agenda', view: agenda },
   { group: 'Negócio' },
-  { path: 'financeiro', mod: 'financeiro', label: 'Financeiro', icon: 'wallet',   view: finance },
-  { path: 'metas',      mod: 'metas',      label: 'Metas',      icon: 'target',   view: goals },
+  { path: 'financeiro', mod: 'financeiro', label: 'Financeiro', icon: 'wallet', img: 'financeiro',   view: finance },
+  { path: 'metas',      mod: 'metas',      label: 'Metas',      icon: 'target', img: 'metas',   view: goals },
   { group: 'Time' },
-  { path: 'ranking',    mod: 'ranking',    label: 'Ranking',    icon: 'trophy',   view: ranking },
-  { path: 'equipe',     mod: 'equipe',     label: 'Equipe',     icon: 'users',    view: team },
+  { path: 'ranking',    mod: 'ranking',    label: 'Ranking',    icon: 'trophy', img: 'ranking',   view: ranking },
+  { path: 'equipe',     mod: 'equipe',     label: 'Equipe',     icon: 'users', img: 'equipe',    view: team },
 ];
 
 const $ = s => document.querySelector(s);

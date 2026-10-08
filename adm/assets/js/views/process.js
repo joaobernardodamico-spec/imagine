@@ -5,6 +5,8 @@ import { esc, icon } from '../util.js';
 import { pageHead } from './components.js';
 
 const state = { stage: 'objetivo', track: 'branding' };
+// serviços sem jornada própria seguem a jornada base
+const journeyOf = t => (JOURNEYS[t]?.objetivo ? t : 'base');
 
 const PHASES = [
   { name: 'Entender', desc: 'Antes de criar, entender.', keys: ['objetivo', 'briefing', 'arquivos', 'pesquisa'] },
@@ -15,13 +17,13 @@ const PHASES = [
 const TIPS = {
   objetivo: ['Se não cabe em uma frase, ainda não está claro.', 'Pergunte: "como vamos saber que deu certo?"'],
   briefing: ['Preencha junto com o cliente, em call.', 'Briefing marcado como completo libera XP e fecha a tarefa.'],
-  arquivos: ['Pasta do Drive com nome padrão: CLIENTE — Projeto — Ano.', 'Senhas vão no cofre, nunca no Hub.'],
+  arquivos: ['Pasta do Drive com nome padrão: CLIENTE — Projeto — Ano.', 'Senhas vão no cofre, nunca no ATLAS.'],
   pesquisa: ['Concorrente direto, indireto e uma referência fora do setor.', 'Resuma em 3 oportunidades.'],
   conceito: ['O conceito precisa ser explicável em 30 segundos.', 'Volte ao objetivo: o conceito responde a ele?'],
   implementacao: ['Quebre em tarefas pequenas. Cada uma conta ponto.', 'Checkpoint interno antes de mostrar ao cliente.'],
   apresentacao: ['Conte a história: problema → conceito → solução.', 'Registre o feedback nas notas do projeto.'],
   revisao: ['Ajuste dentro do escopo; fora do escopo vira proposta nova.', 'Aprovação final sempre por escrito.'],
-  entrega: ['Entregue também o manual de marca no Hub.', 'Peça NPS e autorização para usar como case.'],
+  entrega: ['Entregue também o manual de marca do ATLAS (Marca → Manual completo).', 'Peça NPS e autorização para usar como case.'],
 };
 
 export default {
@@ -31,10 +33,10 @@ export default {
     const def = stageDef(state.stage, state.track);
     const tasks = stageTasksFor(def, state.track);
     const live = store.where('stages', s => s.key === def.key && s.status === 'andamento')
-      .map(s => store.find('projects', s.project_id)).filter(p => p && p.status === 'ativo' && (state.track === 'web') === (p.track === 'web'));
+      .map(s => store.find('projects', s.project_id)).filter(p => p && p.status === 'ativo' && journeyOf(p.track) === journeyOf(state.track));
 
     return `<div class="page">
-      ${pageHead('Processos', 'Como a IMAGINE trabalha, do primeiro contato à entrega. Todo projeto no Hub segue este fluxo.')}
+      ${pageHead('Processos', 'Como a IMAGINE trabalha, do primeiro contato à entrega. Todo projeto no ATLAS segue a jornada do seu serviço.')}
 
       <section class="card flow-card">
         <div class="card-head"><h2>Fluxo de projeto${JOURNEYS[state.track] ? ` · <span class="ok">jornada ${esc(JOURNEYS[state.track].label)}</span>` : ''}</h2>

@@ -190,7 +190,7 @@ function journey(p, pr, selKey) {
   const fmt = d => date(d, { day: '2-digit', month: 'short' });
   return `<section class="journey card">
     <div class="jmain">
-    <div class="journey-head"><h2>Jornada do projeto</h2>${JOURNEYS[p.track] ? `<span class="pill pill-journey">${icon(TRACK_ICONS[p.track] || 'folder', 13)}${esc(JOURNEYS[p.track].label)}</span>` : ''}</div>
+    <div class="journey-head"><h2>Jornada do projeto</h2>${JOURNEYS[p.track]?.label ? `<span class="pill pill-journey">${icon(TRACK_ICONS[p.track] || 'folder', 13)}${esc(JOURNEYS[p.track].label)}</span>` : ''}</div>
     <ol class="jsteps">${stagesFor(p.track).map(def => {
       const s = pr.stages.find(x => x.key === def.key);
       const st = s?.status || 'pendente';

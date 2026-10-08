@@ -255,7 +255,7 @@ export async function saveBriefing(p, briefing, markDone) {
   if (markDone && !wasDone) {
     const xp = await award(me().id, 'briefing_done', p.name, p.id);
     toast('Briefing completo. Direcionador pronto.', { kind: 'success', xp });
-    const t = tasksOf(p.id, 'briefing').find(t => /briefing no hub/i.test(t.title) && !t.done);
+    const t = tasksOf(p.id, 'briefing').find(t => /briefing no (hub|atlas)/i.test(t.title) && !t.done);
     if (t) await toggleTask(t);
   } else toast('Briefing salvo');
 }

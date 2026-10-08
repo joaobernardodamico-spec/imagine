@@ -25,6 +25,13 @@ const sectionCount = (b, s) => s.qs.filter(([n]) => String(b['q' + n.replace('.'
 const RAMP = ['#F0EEE9', '#E2E7EF', '#CEDCF1', '#B2CBF1', '#8DB2EC', '#5E92E4', '#3B73D8', '#2456C2', '#163A92', '#0B1B3F'];
 const INK = ['#0B1B3F', '#0B1B3F', '#0B1B3F', '#0B1B3F', '#0B1B3F', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#59C6FE'];
 const tone = n => `--sec-bg:${RAMP[(n - 1) % RAMP.length]};--sec-ink:${INK[(n - 1) % INK.length]};--i:${n}`;
+const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const mix = (hex, f) => '#' + hexRgb(hex).map(c => Math.round(255 + (c - 255) * f).toString(16).padStart(2, '0')).join('');
+function fillTone(n, f) {
+  const color = RAMP[(n - 1) % RAMP.length];
+  const ink = f >= .6 ? INK[(n - 1) % INK.length] : '#0B1B3F';
+  return `--sec-bg:${mix(color, f)};--sec-ink:${ink};--i:${n}`;
+}
 
 function answer(p, b, q, key, sec, edit) {
   const val = String(b[key] || '');
@@ -78,7 +85,7 @@ export function briefingPanel(p, edit, sub) {
       <nav class="brief-nav card no-print" aria-label="Seções do briefing">
         ${BRIEFING_FORM.map(s => {
           const n = sectionCount(b, s);
-          return `<a href="#/projetos/${esc(p.id)}/briefing/${s.n}" data-act="bSec" data-sec="${s.n}" style="${tone(s.n)}" class="${s.n === cur ? 'active' : ''} ${n === s.qs.length ? 'full' : ''}">
+          return `<a href="#/projetos/${esc(p.id)}/briefing/${s.n}" data-act="bSec" data-sec="${s.n}" style="${fillTone(s.n, n / s.qs.length)}" class="${s.n === cur ? 'active' : ''} ${n === s.qs.length ? 'full' : ''}">
             <span class="bn-n">${n === s.qs.length ? icon('check', 13) : s.n}</span><span class="bn-t">${esc(s.title)}</span>
             <small data-bcount="${s.n}">${n}/${s.qs.length}</small></a>`;
         }).join('')}
@@ -126,16 +133,15 @@ function updateCount(id, sec) {
   const s = BRIEFING_FORM.find(x => x.n === Number(sec));
   const el = document.querySelector(`[data-bcount="${sec}"]`);
   if (s && el) el.textContent = `${sectionCount(b, s)}/${s.qs.length}`;
+  const nav = document.querySelector(`.brief-nav a[data-sec="${sec}"]`);
+  if (s && nav) { nav.setAttribute('style', fillTone(s.n, sectionCount(b, s) / s.qs.length)); nav.classList.toggle('full', sectionCount(b, s) === s.qs.length); }
 }
 
 async function saveField(id, key, value, sec) {
   const p = store.find('projects', id);
   await store.update('projects', id, { briefing: { ...(p.briefing || {}), [key]: value } }, { silent: true });
-  // Atualiza contadores sem redesenhar (o foco fica onde está)
-  const b = store.find('projects', id).briefing;
-  const s = BRIEFING_FORM.find(x => x.n === Number(sec));
-  const el = document.querySelector(`[data-bcount="${sec}"]`);
-  if (s && el) el.textContent = `${sectionCount(b, s)}/${s.qs.length}`;
+  // Atualiza contador e cor da seção sem redesenhar (o foco fica onde está)
+  updateCount(id, sec);
 }
 
 export const briefingActions = {

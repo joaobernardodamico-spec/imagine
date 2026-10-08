@@ -28,7 +28,7 @@ export function filesPanel({ project_id = null, account_id = null, compact = fal
         if (!f && s.kind === 'briefing' && project_id) {
           return `<a class="slot filled" href="#/projetos/${esc(project_id)}/briefing">
             <span class="slot-ic">${icon('brief', 20)}</span>
-            <span><strong>${s.label}</strong><small>Briefing no Hub</small></span></a>`;
+            <span><strong>${s.label}</strong><small>Briefing no ATLAS</small></span></a>`;
         }
         return f
           ? `<div class="slot filled">
