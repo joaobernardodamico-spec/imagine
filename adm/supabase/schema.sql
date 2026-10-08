@@ -625,3 +625,85 @@ begin
     insert into project_members (project_id, user_id, role) values (v_pid, v_owner, 'lider');
   end if;
 end $$;
+
+-- ============================================================
+-- ATLAS rodada 2: tamanho das imagens do moodboard, foto da pessoa
+-- ============================================================
+alter table moodboard add column if not exists w smallint;
+alter table moodboard add column if not exists h smallint;
+alter table profiles add column if not exists avatar_url text;
+
+-- "Registrar contrato assinado" passa a ser da etapa 1, onde a etapa 1 ainda está aberta
+update tasks t set stage_key = 'objetivo', sort = 99
+from stages s
+where t.title = 'Registrar contrato assinado' and t.stage_key = 'arquivos'
+  and s.project_id = t.project_id and s.key = 'objetivo' and s.status <> 'concluida';
+
+-- Site da Arctia na jornada de desenvolvimento web, com a Doma Marcas para o registro de marca
+do $$
+declare
+  v_acc uuid := (select account_id from projects where name = 'Projeto Arctia Marketing' limit 1);
+  v_owner uuid := (select id from profiles where role = 'socio' order by created_at limit 1);
+  v_doma uuid := (select id from alliances where name = 'Doma Marcas' limit 1);
+  v_pid uuid;
+begin
+  if exists (select 1 from projects where name = 'Site Arctia') then return; end if;
+  insert into projects (account_id, name, client_name, kind, track, status, objective, start_date, due_date, value,
+                        briefing, briefing_done, cover_color, created_by, brand, alliances, reminders)
+  values (v_acc, 'Site Arctia', 'Arctia Marketing', 'cliente', 'web', 'ativo',
+          'Criar um site institucional completo, rápido e responsivo, que gere confiança e capte clientes.',
+          current_date, current_date + 30, 0, '{}'::jsonb, false, '#1D5CF0', v_owner, '{}'::jsonb,
+          case when v_doma is null then '[]'::jsonb else jsonb_build_array(v_doma::text) end,
+          $rem$[{"id":"r-arctia-1","text":"Registro de marca e patente no INPI com a Doma Marcas (enviar nome, CNPJ, logo final e atividades)","done":false},{"id":"r-arctia-2","text":"O site usa a identidade do projeto de branding da Arctia: alinhar prazos","done":false}]$rem$::jsonb)
+  returning id into v_pid;
+
+  insert into stages (project_id, key, n, status)
+  select v_pid, s.key, s.n, case when s.n = 1 then 'andamento' else 'pendente' end
+  from (values ('objetivo', 1), ('briefing', 2), ('arquivos', 3), ('pesquisa', 4), ('conceito', 5), ('implementacao', 6), ('apresentacao', 7), ('revisao', 8), ('entrega', 9)) as s(key, n);
+
+  insert into tasks (project_id, stage_key, title, sort, done)
+  select v_pid, t.stage_key, t.title, t.sort, false
+  from (values
+      ('objetivo', 'Reunião de kickoff', 0),
+      ('objetivo', 'Definir o objetivo do site em uma frase', 1),
+      ('objetivo', 'Fechar escopo de páginas e funcionalidades', 2),
+      ('objetivo', 'Registrar contrato assinado', 3),
+      ('briefing', 'Preencher briefing no Hub', 0),
+      ('briefing', 'Mapear público e jornada do visitante', 1),
+      ('briefing', 'Listar sites de referência', 2),
+      ('briefing', 'Aprovar briefing', 3),
+      ('arquivos', 'Acesso ao domínio / DNS', 0),
+      ('arquivos', 'Acesso à hospedagem', 1),
+      ('arquivos', 'Receber textos das páginas', 2),
+      ('arquivos', 'Receber fotos e vídeos', 3),
+      ('arquivos', 'Receber a marca (ou o projeto de branding)', 4),
+      ('pesquisa', 'Benchmark de UX dos concorrentes', 0),
+      ('pesquisa', 'Sitemap', 1),
+      ('pesquisa', 'Jornada do usuário e chamadas para ação', 2),
+      ('pesquisa', 'Palavras-chave (SEO)', 3),
+      ('conceito', 'Wireframe desktop', 0),
+      ('conceito', 'Wireframe mobile', 1),
+      ('conceito', 'Validar wireframes com o cliente', 2),
+      ('implementacao', 'UI desktop', 0),
+      ('implementacao', 'UI mobile', 1),
+      ('implementacao', 'Componentes e estados (botões, formulários)', 2),
+      ('implementacao', 'Aprovar layout', 3),
+      ('apresentacao', 'Desenvolvimento front-end', 0),
+      ('apresentacao', 'CMS / painel de edição', 1),
+      ('apresentacao', 'Integrações (formulários, WhatsApp, analytics)', 2),
+      ('apresentacao', 'SEO técnico (títulos, sitemap, velocidade)', 3),
+      ('revisao', 'QA: links e formulários', 0),
+      ('revisao', 'Testes de responsividade', 1),
+      ('revisao', 'Teste de velocidade (PageSpeed)', 2),
+      ('revisao', 'Aplicar ajustes e aprovação final por escrito', 3),
+      ('entrega', 'Deploy em produção', 0),
+      ('entrega', 'Apontar domínio e SSL', 1),
+      ('entrega', 'Treinamento / handoff do painel', 2),
+      ('entrega', 'Enviar pesquisa NPS', 3),
+      ('entrega', 'Registrar case no portfólio', 4)
+  ) as t(stage_key, title, sort);
+
+  if v_owner is not null then
+    insert into project_members (project_id, user_id, role) values (v_pid, v_owner, 'lider');
+  end if;
+end $$;

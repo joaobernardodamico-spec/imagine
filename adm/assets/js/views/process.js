@@ -1,6 +1,6 @@
 // Processos IMAGINE desenhados: fluxo de projeto (9 etapas) e fluxo comercial.
 import { store } from '../store.js';
-import { STAGES, TRACKS, LEAD_STAGES, XP, stageTasksFor } from '../config.js';
+import { STAGES, TRACKS, LEAD_STAGES, XP, stageTasksFor, stageDef, JOURNEYS } from '../config.js';
 import { esc, icon } from '../util.js';
 import { pageHead } from './components.js';
 
@@ -28,16 +28,16 @@ export default {
   title: () => 'Processos',
 
   render() {
-    const def = STAGES.find(s => s.key === state.stage);
+    const def = stageDef(state.stage, state.track);
     const tasks = stageTasksFor(def, state.track);
     const live = store.where('stages', s => s.key === def.key && s.status === 'andamento')
-      .map(s => store.find('projects', s.project_id)).filter(p => p && p.status === 'ativo');
+      .map(s => store.find('projects', s.project_id)).filter(p => p && p.status === 'ativo' && (state.track === 'web') === (p.track === 'web'));
 
     return `<div class="page">
       ${pageHead('Processos', 'Como a IMAGINE trabalha, do primeiro contato à entrega. Todo projeto no Hub segue este fluxo.')}
 
       <section class="card flow-card">
-        <div class="card-head"><h2>Fluxo de projeto</h2>
+        <div class="card-head"><h2>Fluxo de projeto${JOURNEYS[state.track] ? ` · <span class="ok">jornada ${esc(JOURNEYS[state.track].label)}</span>` : ''}</h2>
           <div class="seg seg-sm">${Object.entries(TRACKS).map(([k, l]) =>
             `<button class="seg-btn ${state.track === k ? 'active' : ''}" data-act="track" data-track="${k}">${esc(l)}</button>`).join('')}</div>
         </div>
@@ -47,7 +47,7 @@ export default {
               <div class="phase-label"><strong>${esc(ph.name)}</strong><small>${esc(ph.desc)}</small></div>
               <div class="phase-nodes">
                 ${ph.keys.map(k => {
-                  const s = STAGES.find(x => x.key === k);
+                  const s = stageDef(k, state.track);
                   return `<button class="node ${state.stage === k ? 'active' : ''}" data-act="stage" data-key="${k}">
                     <span class="node-n">${s.n}</span><span class="node-name">${esc(s.name)}</span>
                   </button>`;
@@ -72,7 +72,7 @@ export default {
         <div class="stack">
           <section class="card">
             <div class="card-head"><h2>Projetos nesta etapa agora</h2></div>
-            ${live.length ? `<ul class="link-list">${live.map(p => `<li><a href="#/projetos/${esc(p.id)}/etapas">${icon('folder', 16)} <span>${esc(p.name)}</span></a></li>`).join('')}</ul>` : '<p class="muted">Nenhum.</p>'}
+            ${live.length ? `<ul class="link-list">${live.map(p => `<li><a href="#/projetos/${esc(p.id)}/visao/${esc(def.key)}">${icon('folder', 16)} <span>${esc(p.name)}</span></a></li>`).join('')}</ul>` : '<p class="muted">Nenhum.</p>'}
           </section>
           <section class="card">
             <div class="card-head"><h2>Como a pontuação funciona</h2></div>

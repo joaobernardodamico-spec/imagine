@@ -40,7 +40,8 @@ export const initials = name => String(name || '?').split(/\s+/).filter(Boolean)
 
 export function avatar(p, size = 28) {
   if (!p) return '';
-  return `<span class="avatar" style="--av:${esc(p.color || '#12328C')};--s:${size}px" title="${esc(p.name)}">${esc(initials(p.name))}</span>`;
+  const photo = p.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="" loading="lazy">` : esc(initials(p.name));
+  return `<span class="avatar ${p.avatar_url ? 'has-photo' : ''}" style="--av:${esc(p.color || '#12328C')};--s:${size}px" title="${esc(p.name)}">${photo}</span>`;
 }
 
 // ------------------------------------------------------------

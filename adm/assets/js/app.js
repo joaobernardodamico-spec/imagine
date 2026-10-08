@@ -69,7 +69,8 @@ function renderView() {
     current = null; return;
   }
   const sameRoute = current && current.view === r.view && JSON.stringify(current.params) === JSON.stringify(r.params);
-  const y = sameRoute ? window.scrollY : 0;
+  const sameTab = current && current.view === r.view && current.params.id && current.params.id === r.params.id && current.params.tab === r.params.tab;
+  const y = sameRoute || sameTab ? window.scrollY : 0;
   current = r;
   view.innerHTML = r.view.render(r.params);
   r.view.after?.(view, r.params);
@@ -98,7 +99,7 @@ function renderNav() {
     }
     if (!can(n.mod)) return '';
     const active = r.mod === n.mod;
-    return `<a href="#/${n.path}" class="nav-item ${active ? 'active' : ''}">${icon(n.icon)}<span>${esc(n.label)}</span></a>`;
+    return `<a href="#/${n.path}" class="nav-item ${active ? 'active' : ''}" title="${esc(n.label)}">${icon(n.icon)}<span>${esc(n.label)}</span></a>`;
   }).join('');
 }
 
@@ -128,18 +129,18 @@ function renderApp() {
   document.body.classList.remove('is-login');
   $('#app').innerHTML = `
     <aside class="sidebar" id="sidebar">
-      <a href="#/" class="side-brand">
-        <span class="logo-chip"><img src="assets/img/logo.png" alt="IMAGINE Concept"></span>
-        <span class="brand-tag">${APP_NAME}</span>
-      </a>
+      <button class="side-brand" data-shell="navHide" title="Esconder o menu" aria-label="${APP_NAME}: esconder o menu">
+        <span class="atlas-mark" aria-hidden="true"></span><span class="atlas-word" aria-hidden="true"></span>
+      </button>
       ${DEMO ? '<div class="demo-pill" title="Dados salvos só neste navegador. Configure o Supabase para usar de verdade.">Modo demo</div>' : ''}
       <nav id="nav" class="nav"></nav>
       <div id="user-card" class="user-card"></div>
     </aside>
     <header class="topbar">
       <button class="icon-btn" data-shell="menu" aria-label="Menu">${icon('menu')}</button>
-      <span class="logo-chip logo-chip-sm"><img src="assets/img/logo.png" alt="IMAGINE" class="topbar-logo"></span>
+      <span class="atlas-full topbar-logo" role="img" aria-label="${APP_NAME}"></span>
     </header>
+    <button class="nav-reopen" data-shell="navShow" title="Mostrar o menu" aria-label="Mostrar o menu"><span class="atlas-mark"></span></button>
     <main id="view" class="main"></main>
     <div class="scrim" data-shell="menu"></div>`;
   renderUserCard();
@@ -152,7 +153,7 @@ function renderLogin(error = '') {
   $('#app').innerHTML = `
     <div class="login">
       <div class="login-art">
-        <img src="assets/img/logo.png" alt="IMAGINE Concept">
+        <div class="login-logo" role="img" aria-label="${APP_NAME} by IMAGINE Concept"><span class="atlas-full"></span><img src="assets/img/simbolo-2.png" alt=""></div>
         <div class="login-claim">
           <span>${APP_NAME} · CRM da IMAGINE</span>
           <h1>Projetos, processos e <em>propósito</em> num lugar só.</h1>
@@ -212,6 +213,12 @@ function delegate(type) {
 
 function shellAction(a) {
   if (a === 'menu') document.body.classList.toggle('nav-open');
+  if (a === 'navHide' || a === 'navShow') {
+    // No celular o logo só fecha a gaveta; no computador esconde o menu inteiro
+    if (a === 'navHide' && matchMedia('(max-width: 860px)').matches) return document.body.classList.remove('nav-open');
+    document.body.classList.toggle('nav-hidden', a === 'navHide');
+    try { localStorage.setItem('imagine-hub:nav', a === 'navHide' ? 'hidden' : 'rail'); } catch { /* noop */ }
+  }
   if (a === 'logout') store.signOut().then(() => renderLogin());
   if (a === 'password') modal({
     title: 'Definir minha senha',
@@ -241,6 +248,7 @@ function shellAction(a) {
 // ------------------------------------------------------------
 async function boot() {
   try { const t = localStorage.getItem('imagine-hub:theme'); if (t) document.documentElement.dataset.theme = t; } catch { /* noop */ }
+  try { if (localStorage.getItem('imagine-hub:nav') === 'hidden') document.body.classList.add('nav-hidden'); } catch { /* noop */ }
   ['click', 'change', 'input', 'submit'].forEach(delegate);
   window.addEventListener('hashchange', () => { document.body.classList.remove('nav-open'); if (store.user) renderView(); });
   store.on(d => { if (d?.auth) return store.user ? renderApp() : renderLogin(); queueRender(); });

@@ -5,7 +5,7 @@
 import { store } from '../store.js';
 import { STAGES, JOURNAL } from '../config.js';
 import { me, stagesOf } from '../ops.js';
-import { esc, icon, modal, toast, shrinkImage } from '../util.js';
+import { esc, icon, modal, toast, shrinkImage, safeUrl } from '../util.js';
 
 // Formatos das molduras (colunas × linhas), em ciclo: dá o ar de mural montado à mão
 const SHAPES = ['w2 h2', '', 'h2', '', 'w2', '', 'h2', '', '', 'w2 h2', '', 'w2'];
@@ -15,11 +15,14 @@ const MIN_FRAMES = 12;
 export const moodItems = pid => store.where('moodboard', m => m.project_id === pid)
   .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || String(a.created_at).localeCompare(String(b.created_at)));
 
+const SPAN = { 'w2 h2': [2, 2], 'w2': [2, 1], 'h2': [1, 2], '': [1, 1] };
+const sizeOf = (m, i) => [m.w || SPAN[SHAPES[i % SHAPES.length]][0], m.h || SPAN[SHAPES[i % SHAPES.length]][1]];
+
 export function moodPanel(p, edit) {
   const items = moodItems(p.id);
   const empties = Math.max(3, MIN_FRAMES - items.length);
   const frame = (i, inner, cls = '', attrs = '') =>
-    `<div class="mframe ${SHAPES[i % SHAPES.length]} ${cls}" style="--tilt:${TILTS[i % TILTS.length]}deg" ${attrs}>${inner}</div>`;
+    `<div class="mframe ${cls === 'mframe-img' ? '' : SHAPES[i % SHAPES.length]} ${cls}" ${attrs.includes('style=') ? '' : `style="--tilt:${TILTS[i % TILTS.length]}deg"`} ${attrs}>${inner}</div>`;
   return `<section class="mood">
     <div class="mood-head">
       <div><div class="kicker">Quadro de referências</div><h2>Moodboard</h2>
@@ -30,14 +33,16 @@ export function moodPanel(p, edit) {
       </div>` : ''}
     </div>
     <div class="mood-grid ${edit ? 'can-edit' : ''}" id="mood">
-      ${items.map((m, i) => frame(i, `
+      ${items.map((m, i) => { const [w, h] = sizeOf(m, i); return frame(i, `
         <img src="${esc(m.url)}" alt="${esc(m.title || 'Referência')}" loading="lazy" draggable="false">
+        ${m.source && /^https?:/i.test(m.source) ? `<a class="mlink" href="${esc(safeUrl(m.source))}" target="_blank" rel="noopener" title="Abrir a origem: ${esc(m.source)}">${icon('link', 15)}</a>` : ''}
         <div class="mcap">
-          <span>${esc(m.title || 'Sem nome')}</span>
+          <span class="mname">${esc(m.title || 'Sem nome')}${edit ? `<button class="mpen" data-act="moodEdit" data-id="${esc(m.id)}" title="Editar nome e origem">${icon('edit', 13)}</button>` : ''}</span>
           <button class="mbtn" data-act="moodInfo" data-id="${esc(m.id)}">${icon('text', 14)} Texto</button>
           ${edit ? `<button class="mbtn mbtn-x" data-act="moodDel" data-id="${esc(m.id)}" title="Remover">${icon('trash', 14)}</button>` : ''}
         </div>
-        ${m.note ? `<span class="mnote-dot" title="Tem texto"></span>` : ''}`, 'mframe-img', `data-id="${esc(m.id)}" ${edit ? 'draggable="true"' : ''}`)).join('')}
+        ${m.note ? `<span class="mnote-dot" title="Tem texto"></span>` : ''}
+        ${edit ? `<span class="mresize" data-id="${esc(m.id)}" title="Arraste para redimensionar"></span>` : ''}`, 'mframe-img', `data-id="${esc(m.id)}" data-w="${w}" data-h="${h}" style="--tilt:${TILTS[i % TILTS.length]}deg;grid-column:span ${w};grid-row:span ${h}" ${edit ? 'draggable="true"' : ''}`); }).join('')}
       ${edit ? Array.from({ length: empties }, (_, j) => frame(items.length + j, `<span>${icon('image', 20)}<small>Solte aqui</small></span>`, 'mframe-empty', `data-slot="${items.length + j}"`)).join('') : ''}
     </div>
   </section>`;
@@ -60,6 +65,34 @@ async function addFiles(pid, files) {
 export function wireMood(root, pid) {
   const grid = root.querySelector('#mood.can-edit');
   if (!grid) return;
+  grid.querySelectorAll('.mresize').forEach(h => h.addEventListener('pointerdown', e => {
+    e.preventDefault(); e.stopPropagation();
+    const f = h.closest('.mframe');
+    const cs = getComputedStyle(grid);
+    const gap = parseFloat(cs.columnGap) || 14;
+    const colW = parseFloat(cs.gridTemplateColumns.split(' ')[0]) + gap;
+    const rowH = parseFloat(cs.gridAutoRows) + gap;
+    const cols = cs.gridTemplateColumns.split(' ').length;
+    const start = { x: e.clientX, y: e.clientY, w: +f.dataset.w, h: +f.dataset.h };
+    f.draggable = false; f.classList.add('resizing');
+    h.setPointerCapture(e.pointerId);
+    const move = ev => {
+      const w = Math.max(1, Math.min(cols, 4, Math.round(start.w + (ev.clientX - start.x) / colW)));
+      const hh = Math.max(1, Math.min(4, Math.round(start.h + (ev.clientY - start.y) / rowH)));
+      if (w === +f.dataset.w && hh === +f.dataset.h) return;
+      f.dataset.w = w; f.dataset.h = hh;
+      f.style.gridColumn = `span ${w}`; f.style.gridRow = `span ${hh}`;
+    };
+    const up = async () => {
+      h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up);
+      f.draggable = true; f.classList.remove('resizing');
+      if (+f.dataset.w !== start.w || +f.dataset.h !== start.h) {
+        try { await store.update('moodboard', f.dataset.id, { w: +f.dataset.w, h: +f.dataset.h }, { silent: true }); }
+        catch (err) { toast('Não salvou o tamanho: ' + err.message, { kind: 'error' }); }
+      }
+    };
+    h.addEventListener('pointermove', move); h.addEventListener('pointerup', up);
+  }));
   grid.querySelectorAll('.mframe-img').forEach(f => {
     f.addEventListener('dragstart', e => { e.dataTransfer.setData('text/mood-id', f.dataset.id); f.classList.add('dragging'); });
     f.addEventListener('dragend', () => f.classList.remove('dragging'));
@@ -122,6 +155,18 @@ export const moodActions = {
         { name: 'source', label: 'Fonte / link', value: m.source, full: true },
         { name: 'note', label: 'Por que ela está aqui? O que pegar dela?', type: 'textarea', rows: 5, value: m.note,
           placeholder: '• O que chama atenção\n• O que vamos usar (cor, textura, composição, tipo)\n• O que NÃO usar' },
+      ],
+      async onSubmit(v) { await store.update('moodboard', m.id, v); },
+    });
+  },
+  moodEdit(el) {
+    const m = store.find('moodboard', el.dataset.id);
+    if (!m) return;
+    modal({
+      title: 'Editar referência',
+      fields: [
+        { name: 'title', label: 'Nome', value: m.title, full: true },
+        { name: 'source', label: 'Origem (link da página, perfil, Behance…)', value: m.source, full: true, placeholder: 'https://' },
       ],
       async onSubmit(v) { await store.update('moodboard', m.id, v); },
     });

@@ -1,6 +1,6 @@
 // Regras de negócio: permissões, projetos/etapas/tarefas, CRM, metas.
 import { store } from './store.js';
-import { ACCESS, STAGES, LEAD_STAGES, LEAD_WON, LEAD_LOST, stageTasksFor, XP } from './config.js';
+import { ACCESS, STAGES, LEAD_STAGES, LEAD_WON, LEAD_LOST, stageTasksFor, stageDef, STAGE_DAYS, XP } from './config.js';
 import { award, revoke } from './game.js';
 import { celebrate, toast, inMonth, today } from './util.js';
 
@@ -61,7 +61,7 @@ export function progressOf(pid) {
   const doneTasks = tasks.filter(t => t.done).length;
   return {
     stages, doneStages, totalStages: stages.length,
-    current, currentDef: current ? STAGES.find(s => s.key === current.key) : null,
+    current, currentDef: current ? stageDef(current.key, store.find('projects', pid)?.track) : null,
     doneTasks, totalTasks: tasks.length,
     pct: tasks.length ? Math.round((doneTasks / tasks.length) * 100) : Math.round((doneStages / (stages.length || 9)) * 100),
   };
@@ -98,6 +98,48 @@ export async function createProject(v) {
   return p;
 }
 
+// ------------------------------------------------------------
+// Plano e ritmo: cada etapa leva STAGE_DAYS dias a partir do início
+// ------------------------------------------------------------
+const dayMs = 864e5;
+const asDate = d => new Date(String(d).slice(0, 10) + 'T12:00');
+const short = iso => asDate(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+
+export function plannedEnd(p, n) {
+  if (!p.start_date) return null;
+  const d = asDate(p.start_date);
+  d.setDate(d.getDate() + n * STAGE_DAYS);
+  return d.toISOString().slice(0, 10);
+}
+
+// Compara a etapa atual com o plano: no ritmo, adiantado ou atrasado
+export function paceOf(p) {
+  const pr = progressOf(p.id);
+  if (p.status === 'entregue' || !pr.current) return { kind: 'ok', text: 'Projeto entregue.' };
+  if (!p.start_date) return { kind: 'muted', text: 'Defina a data de início para ver o ritmo.' };
+  const today = asDate(new Date().toISOString());
+  const end = plannedEnd(p, pr.current.n);
+  const late = Math.round((today - asDate(end)) / dayMs);          // > 0: a etapa atual já devia ter fechado
+  const ahead = Math.round((asDate(end) - today) / dayMs) - STAGE_DAYS; // > 0: começou a etapa antes do previsto
+  const left = p.due_date ? Math.round((asDate(p.due_date) - today) / dayMs) : null;
+  const stageTxt = `Etapa ${pr.current.n} prevista até ${short(end)}`;
+  if (left !== null && left < 0) return { kind: 'bad', text: `A entrega passou há ${-left} dia${left === -1 ? '' : 's'}. ${stageTxt}.` };
+  if (late > 0) return { kind: 'bad', text: `${late} dia${late > 1 ? 's' : ''} atrás do plano. ${stageTxt}.` };
+  if (ahead > 0) return { kind: 'ok', text: `Adiantado ${ahead} dia${ahead > 1 ? 's' : ''}. ${stageTxt}.` };
+  return { kind: 'ok', text: `No ritmo. ${stageTxt}.` };
+}
+
+// Projeto em produção = contrato assinado + briefing preenchido
+export function contractSigned(p) {
+  return store.where('tasks', t => t.project_id === p.id && t.done && /contrato assinado/i.test(t.title)).length > 0
+    || store.where('files', f => f.project_id === p.id && f.kind === 'contrato').length > 0;
+}
+export function briefingReady(p) {
+  if (p.briefing_done) return true;
+  const b = p.briefing || {};
+  return Object.keys(b).filter(k => /^q/.test(k) && String(b[k] || '').trim()).length >= 30;
+}
+
 export async function toggleTask(task) {
   const done = !task.done;
   const now = new Date().toISOString();
@@ -130,8 +172,8 @@ async function syncStage(pid, key) {
 export async function completeStage(pid, key) {
   const stages = stagesOf(pid);
   const stage = stages.find(s => s.key === key);
-  const def = STAGES.find(s => s.key === key);
   const project = store.find('projects', pid);
+  const def = stageDef(key, project.track);
   await store.update('stages', stage.id, { status: 'concluida', done_at: new Date().toISOString(), done_by: me().id });
   const xp = await award(me().id, 'stage_done', `${def.name} · ${project.name}`, stage.id);
   const next = stages.find(s => s.n > stage.n && s.status === 'pendente');
@@ -142,7 +184,7 @@ export async function completeStage(pid, key) {
     const xp2 = await award(me().id, 'project_delivered', project.name, pid);
     celebrate('Projeto entregue!', project.name, xp + xp2, 'Entrega final');
   } else {
-    celebrate(`${def.n}. ${def.name}`, next ? `Próxima: ${STAGES.find(s => s.key === next.key).name}` : project.name, xp);
+    celebrate(`${def.n}. ${def.name}`, next ? `Próxima: ${stageDef(next.key, project.track).name}` : project.name, xp);
   }
 }
 

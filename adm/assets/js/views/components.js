@@ -1,6 +1,6 @@
 // Peças reutilizadas entre telas.
 import { store } from '../store.js';
-import { STAGES, ACCOUNT_KINDS, TRACKS, TRACK_ICONS, PROJECT_STATUS } from '../config.js';
+import { STAGES, ACCOUNT_KINDS, TRACKS, TRACK_ICONS, PROJECT_STATUS, stageDef } from '../config.js';
 import { progressOf, account, profile, seesMoney, projectKind, clientLabel } from '../ops.js';
 import { esc, icon, avatar, money, date, relDays, progressBar } from '../util.js';
 
@@ -13,7 +13,8 @@ export function stageDots(pid, { labels = false } = {}) {
   return `<div class="dots ${labels ? 'with-labels' : ''}">${STAGES.map(def => {
     const s = pr.stages.find(x => x.key === def.key);
     const st = s?.status || 'pendente';
-    return `<span class="dot dot-${st}" title="${def.n}. ${esc(def.name)}${st === 'concluida' ? ' ✓' : ''}">${labels ? `<i>${def.n}</i>` : ''}</span>`;
+    const nm = stageDef(def.key, store.find('projects', pid)?.track).name;
+    return `<span class="dot dot-${st}" title="${def.n}. ${esc(nm)}${st === 'concluida' ? ' ✓' : ''}">${labels ? `<i>${def.n}</i>` : ''}</span>`;
   }).join('')}</div>`;
 }
 

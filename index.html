@@ -149,7 +149,7 @@ section{padding:var(--pad-y) var(--pad-x)}
 #ecossistema .section-title em{color:var(--sky)}
 #ecossistema .section-body{color:rgba(255,255,255,.7)}
 #ecossistema .divider{background:var(--sky)}
-.eco-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:72px}
+.eco-grid{margin-top:0}
 .eco-card{padding:44px 36px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);transition:background .25s,border-color .25s}
 .eco-card:hover{background:rgba(89,198,254,.08);border-color:rgba(89,198,254,.3)}
 .eco-media{aspect-ratio:16/10;margin:-44px -36px 28px;background:#0b1440;display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -208,7 +208,6 @@ footer{background:var(--ink);padding:40px var(--pad-x);display:flex;align-items:
   .nav-links{gap:28px}
   .services-grid{grid-template-columns:repeat(2,1fr)}
   .portfolio-grid .project-card{flex-basis:calc((100% - 16px)/2)}
-  .eco-grid{grid-template-columns:repeat(3,1fr);gap:2px}
   .sobre-inner{gap:48px}
 }
 
@@ -243,7 +242,6 @@ footer{background:var(--ink);padding:40px var(--pad-x);display:flex;align-items:
   .sobre-stats{gap:24px;margin-top:36px;padding-top:36px}
   .stat-num{font-size:34px}
   .stat-label{font-size:11px}
-  .eco-grid{grid-template-columns:1fr;margin-top:48px}
   .eco-card{padding:36px 28px}
   .eco-media{margin:-36px -28px 24px}
   .contato-email{margin-top:32px}
@@ -310,19 +308,45 @@ footer{background:var(--ink);padding:40px var(--pad-x);display:flex;align-items:
   .hero-sub{margin-bottom:28px}
 }
 
-/* ============ SERVIÇOS: 3 cards em linha, com imagem ============ */
-.services-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:64px;align-items:stretch}
+/* ============ SERVIÇOS E ECOSSISTEMA: carrosséis automáticos e compactos ============ */
+.services-row,.eco-grid{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.services-row::-webkit-scrollbar,.eco-grid::-webkit-scrollbar{display:none}
+.svc-carousel,.eco-carousel{margin-top:44px}
+.services-row .service-card{flex:0 0 42%;scroll-snap-align:start;transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,opacity .5s}
+.eco-grid .eco-card{flex:0 0 42%;scroll-snap-align:start;transition:background .25s,border-color .25s,opacity .5s}
+.services-row .service-card.off,.eco-grid .eco-card.off{opacity:.5}
 .services-row .service-card{background:white;border:1px solid var(--border);padding:0;display:flex;flex-direction:column;overflow:hidden;transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s}
 .services-row .service-card:hover{transform:translateY(-6px);box-shadow:0 22px 50px rgba(18,50,140,.18)}
-.service-media{position:relative;aspect-ratio:4/3;overflow:hidden;background:var(--navy)}
+.service-media{position:relative;aspect-ratio:2/1;overflow:hidden;background:var(--navy)}
 .service-media img{width:100%;height:100%;object-fit:cover;transition:transform .7s cubic-bezier(.25,.46,.45,.94)}
 .services-row .service-card:hover .service-media img{transform:scale(1.05)}
 .service-media::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,20,60,0) 45%,rgba(10,20,60,.55) 78%,#fff 100%)}
-.service-body{padding:0 32px 36px;margin-top:-34px;position:relative;z-index:1;display:flex;flex-direction:column;flex:1}
+.service-body{padding:0 28px 26px;margin-top:-30px;position:relative;z-index:1;display:flex;flex-direction:column;flex:1}
 .services-row .service-num{color:var(--sky);font-weight:700;font-size:34px;margin-bottom:10px;text-shadow:0 2px 14px rgba(10,20,60,.45)}
-.services-row .service-title{font-family:var(--font-title);font-size:22px;line-height:1.2;margin-bottom:14px}
-@media(max-width:1024px){.services-row{gap:16px}.service-body{padding:0 22px 28px}.services-row .service-title{font-size:19px}}
-@media(max-width:768px){.services-row{grid-template-columns:1fr;margin-top:40px;gap:20px}.service-media{aspect-ratio:16/10}}
+.services-row .service-title{font-family:var(--font-title);font-size:20px;line-height:1.2;margin-bottom:10px}
+.services-row .service-list{margin-top:14px}
+.services-row .service-go{padding-top:20px}
+
+.eco-grid .eco-card{padding:28px 28px 26px}
+.eco-grid .eco-media{aspect-ratio:2/1;margin:-28px -28px 18px}
+.eco-grid .eco-name{font-size:21px;margin-bottom:8px}
+.eco-grid .eco-type{margin-bottom:10px}
+.eco-grid .eco-link{margin-top:14px}
+#ecossistema .car-btn{background:rgba(255,255,255,.14);backdrop-filter:blur(6px)}
+#ecossistema .car-btn:hover{background:var(--logo-bg)}
+#ecossistema .car-dots button{background:rgba(255,255,255,.3)}
+#ecossistema .car-dots button.on{background:var(--sky)}
+@media(max-width:768px){
+  .svc-carousel,.eco-carousel{margin-top:32px}
+  .services-row,.eco-grid{gap:12px}
+  .services-row .service-card,.eco-grid .eco-card{flex-basis:84%}
+  .service-media{aspect-ratio:16/9}.eco-grid .eco-media{aspect-ratio:16/9}
+  .service-body{padding:0 20px 22px}
+  .services-row .service-desc{font-size:13px;line-height:1.55}
+  .eco-grid .eco-card{padding:22px 20px}
+  .eco-grid .eco-media{margin:-22px -20px 16px}
+  .eco-grid .eco-desc{font-size:13px;line-height:1.55}
+}
 
 /* ============ V2: SERVICES CAROUSEL (legado) ============ */
 .svc-carousel{margin-top:64px}
@@ -435,7 +459,7 @@ footer{background:var(--ink);padding:40px var(--pad-x);display:flex;align-items:
   <div class="hero-bg" id="heroBg"><video class="hero-video" src="assets/video/hero.mp4" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video></div>
   <div class="hero-overlay"></div>
   <div class="hero-content">
-    <span class="hero-eyebrow">Imagine Concept · Curitiba, BR</span>
+    <span class="hero-eyebrow">Imagine Concept</span>
     <h1 class="hero-headline">Transformamos<br><em>imaginação</em><br>em realidade.</h1>
     <p class="hero-sub">Design com propósito. Branding com intenção. Cada projeto começa onde a sua visão está e termina onde ela deveria estar.</p>
     <div class="hero-actions">
@@ -456,10 +480,15 @@ footer{background:var(--ink);padding:40px var(--pad-x);display:flex;align-items:
     <hr class="divider">
     <p class="section-body">Não produzimos por produzir. Cada entrega tem um porquê, e é esse porquê que transforma um bom trabalho em algo memorável.</p>
   </div>
-  <div class="services-row reveal">
+  <div class="carousel svc-carousel reveal" data-auto="4500">
+    <button class="car-btn car-prev" type="button" aria-label="Anterior"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="services-row car-track">
       <div class="service-card"><div class="service-media"><img src="assets/img/servico-identidade.webp" alt="Identidade visual: uma nuvem no lugar da cabeça de um executivo, sob um guarda-chuva" loading="lazy" width="1254" height="1254"></div><div class="service-body"><div class="service-num">01</div><div class="service-title">Identidade Visual e Posicionamento</div><p class="service-desc">Sistemas visuais completos e um posicionamento claro, para a sua marca comunicar quem é antes mesmo de dizer qualquer coisa.</p><ul class="service-list"><li>Logotipo</li><li>Tipografia e paleta</li><li>Manual de marca</li><li>Posicionamento</li><li>Voz e narrativa</li></ul><a class="service-go" href="#briefing" data-solucao="Identidade Visual e Posicionamento">Quero esta solução →</a></div></div>
       <div class="service-card"><div class="service-media"><img src="assets/img/servico-estrategia.webp" alt="Estratégia: um executivo diante de caminhos luminosos que levam a um funil de vendas" loading="lazy" width="1254" height="1254"></div><div class="service-body"><div class="service-num">02</div><div class="service-title">Estratégia de Vendas e Marketing</div><p class="service-desc">Entendemos onde você está, onde quer chegar e o que o mercado espera. Depois traçamos o caminho e criamos a comunicação que vende.</p><ul class="service-list"><li>Estratégia de conteúdo</li><li>Campanhas</li><li>Copywriting</li><li>Funil de vendas</li><li>Redes sociais</li></ul><a class="service-go" href="#briefing" data-solucao="Estratégia de Vendas e Marketing">Quero esta solução →</a></div></div>
       <div class="service-card"><div class="service-media"><img src="assets/img/servico-web.webp" alt="Desenvolvimento web: um notebook flutuando entre nuvens exibindo o site da IMAGINE" loading="lazy" width="1254" height="1254"></div><div class="service-body"><div class="service-num">03</div><div class="service-title">Desenvolvimento Web</div><p class="service-desc">Sites e landing pages rápidos, bonitos e pensados para converter, com a identidade da sua marca em cada detalhe.</p><ul class="service-list"><li>Sites institucionais</li><li>Landing pages</li><li>UX/UI</li><li>Responsivo</li><li>SEO básico</li></ul><a class="service-go" href="#briefing" data-solucao="Desenvolvimento Web">Quero esta solução →</a></div></div>
+    </div>
+    <button class="car-btn car-next" type="button" aria-label="Próximo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></button>
+    <div class="car-dots"></div>
   </div>
 </section>
 
@@ -547,10 +576,15 @@ footer{background:var(--ink);padding:40px var(--pad-x);display:flex;align-items:
     <hr class="divider">
     <p class="section-body">A Imagine não é só um estúdio de serviços. É também um universo em expansão: projetos próprios com identidade, mercado e ambição próprios.</p>
   </div>
-  <div class="eco-grid reveal">
+  <div class="carousel eco-carousel reveal" data-auto="5200">
+  <button class="car-btn car-prev" type="button" aria-label="Anterior"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <div class="eco-grid car-track">
     <div class="eco-card"><div class="eco-media"><img src="assets/img/eco-elementarios.jpg" alt="Elementarios" loading="lazy"></div><div class="eco-name">Elementarios</div><span class="eco-type">Card Game</span><p class="eco-desc">Universo próprio, personagens e narrativa. Um jogo de cartas com mundo e identidade construídos do zero.</p></div>
     <div class="eco-card"><div class="eco-media"><img src="assets/img/eco-trajetoria.jpg" alt="Trajetória" loading="lazy"></div><div class="eco-name">Trajetória</div><span class="eco-type">SaaS · Orientação</span><p class="eco-desc">Plataforma digital de orientação profissional para a geração Z. Gamificada, visual e com propósito claro.</p><a href="https://www.suatrajetoria.com.br" target="_blank" class="eco-link">Acessar →</a></div>
     <div class="eco-card"><div class="eco-media"><img src="assets/img/eco-tekno.jpg" alt="Tekno Sapiens" loading="lazy"></div><div class="eco-name">Tekno Sapiens</div><span class="eco-type">Marca de Roupas</span><p class="eco-desc">Estética, cultura e identidade de tribo. Uma marca de vestuário construída para um estilo de vida específico.</p></div>
+  </div>
+  <button class="car-btn car-next" type="button" aria-label="Próximo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></button>
+  <div class="car-dots"></div>
   </div>
 </section>
 
@@ -699,9 +733,19 @@ document.querySelectorAll('.carousel').forEach(car => {
   let t; track.addEventListener('scroll', () => { clearTimeout(t); t = setTimeout(paint, 80); }, { passive: true });
   window.addEventListener('resize', paint);
   if (car.dataset.auto) {
-    let auto = setInterval(() => go(cur() + 1), +car.dataset.auto);
-    car.addEventListener('mouseenter', () => clearInterval(auto));
-    car.addEventListener('touchstart', () => clearInterval(auto), { passive: true });
+    const ms = +car.dataset.auto;
+    let auto = null, visible = true, hold = false, resume = null;
+    const stop = () => { clearInterval(auto); auto = null; };
+    const start = () => { if (!auto && visible && !hold && !matchMedia('(prefers-reduced-motion:reduce)').matches) auto = setInterval(() => go(cur() + 1), ms); };
+    const pause = (wait = 0) => { hold = true; stop(); clearTimeout(resume); if (wait) resume = setTimeout(() => { hold = false; start(); }, wait); };
+    car.addEventListener('mouseenter', () => pause());
+    car.addEventListener('mouseleave', () => { hold = false; start(); });
+    car.addEventListener('touchstart', () => pause(), { passive: true });
+    car.addEventListener('touchend', () => pause(6000), { passive: true });
+    car.addEventListener('focusin', () => pause());
+    car.addEventListener('focusout', () => { hold = false; start(); });
+    new IntersectionObserver(([e]) => { visible = e.isIntersecting; visible ? start() : stop(); }, { threshold: .25 }).observe(car);
+    start();
   }
   paint();
 });

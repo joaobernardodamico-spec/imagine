@@ -65,12 +65,20 @@ export const ACCOUNT_KINDS = {
 // Serviço do projeto (no banco segue como "track"): define o checklist de cada etapa
 export const TRACKS = {
   branding: 'Branding',
+  marketing: 'Estratégia',
   web: 'Web',
   social: 'Social',
   produto: 'Produto',
   conteudo: 'Conteúdo',
 };
-export const TRACK_ICONS = { branding: 'brand', web: 'globe', social: 'instagram', produto: 'box', conteudo: 'play' };
+export const TRACK_ICONS = { branding: 'brand', marketing: 'chart', web: 'globe', social: 'instagram', produto: 'box', conteudo: 'play' };
+
+// Os 3 serviços da IMAGINE (os mesmos do site). Os outros seguem valendo para projetos antigos.
+export const MAIN_SERVICES = [
+  { key: 'branding', label: 'Identidade visual e posicionamento', short: 'Branding', desc: 'Marca, sistema visual e manual.' },
+  { key: 'marketing', label: 'Estratégia de vendas e marketing', short: 'Estratégia', desc: 'Funil, conteúdo, campanhas e copy.' },
+  { key: 'web', label: 'Desenvolvimento web', short: 'Web', desc: 'Sites e landing pages que convertem.' },
+];
 
 // Objetivos prontos por serviço, do mais simples ao mais completo
 export const OBJECTIVE_PRESETS = {
@@ -78,6 +86,11 @@ export const OBJECTIVE_PRESETS = {
     ['Essencial', 'Criar um logotipo marcante e versátil, pronto para redes sociais e materiais básicos.'],
     ['Completo', 'Desenvolver a identidade visual completa (logo, cores, tipografia e aplicações) que traduza a essência da marca.'],
     ['Estratégico', 'Construir a marca do zero: posicionamento, identidade verbal e visual e manual completo para crescer com consistência.'],
+  ],
+  marketing: [
+    ['Essencial', 'Organizar a comunicação: mensagem principal, oferta clara e um plano de posts para o mês.'],
+    ['Completo', 'Montar a estratégia de vendas e marketing: funil, linha editorial, campanhas e copy.'],
+    ['Estratégico', 'Transformar o marketing num motor de vendas: funil completo, campanhas contínuas e métricas de crescimento.'],
   ],
   web: [
     ['Essencial', 'Colocar no ar uma página única que apresente a marca e leve o visitante ao contato.'],
@@ -123,8 +136,10 @@ export const BUSINESS_MODELS = ['B2B', 'B2C', 'B2B2C', 'D2C', 'B2G', 'Marketplac
 
 // ------------------------------------------------------------
 // Briefing — as mesmas perguntas do Google Forms "BRIEFING — IMAGINE CONCEPT".
-// O número da pergunta (1.1, 2.3…) é o que liga a coluna da planilha de respostas ao campo.
-// opts: atalhos de resposta (o campo continua livre). Ajuste aqui se o Forms mudar.
+// O código da pergunta (1.1, 2.3…) é o número dela no Forms: é ele que liga a coluna da planilha ao campo.
+// Perguntas que só existem no ATLAS usam um código próprio (ex.: 'c1'). A numeração que aparece na tela
+// é a ordem dentro da seção, então dá pra mudar de lugar sem quebrar a importação.
+// [código, pergunta, atalhos de resposta, tipo]. Tipos: texto (padrão), 'date' (prazo do projeto), 'money' (valor + forma de pagamento).
 // ------------------------------------------------------------
 export const BRIEFING_SHEET = {
   id: '1TWVdXOxIV7pBXhHU_-GMIezAa3edI0smuSMNMapR0gg',
@@ -135,7 +150,9 @@ export const BRIEFING_SHEET = {
 export const BRIEFING_FORM = [
   { n: 1, title: 'Sobre a marca / negócio', qs: [
     ['1.1', 'Qual é o nome da marca? Há algum significado por trás dele?'],
+    ['c1', 'Qual o conceito principal da marca?'],
     ['1.2', 'A marca já existe ou está sendo criada do zero?', ['Já existe', 'Estou criando do zero', 'Existe, mas quero reformular']],
+    ['10.2', 'Você já tem uma identidade visual? Está satisfeito com ela? Por quê?'],
     ['1.3', 'Qual é o objetivo da marca? (origem, motivação, momento atual)'],
     ['1.4', 'Quais são os produtos ou serviços oferecidos?'],
     ['1.5', 'Quem são os fundadores ou responsáveis pela marca?'],
@@ -154,7 +171,8 @@ export const BRIEFING_FORM = [
   ] },
   { n: 4, title: 'Personalidade', qs: [
     ['4.1', 'Se sua marca fosse uma pessoa, como ela seria? (ex: divertida, séria, sofisticada, rebelde...)'],
-    ['4.2', 'Que tom de voz representa melhor a marca?', ['Formal', 'Coloquial', 'Amigável', 'Divertido', 'Inspirador', 'Técnico', 'Sofisticado', 'Provocador']],
+    ['4.2', 'Que tom de voz representa melhor a marca?', ['Formal', 'Coloquial', 'Amigável', 'Divertido', 'Inspirador', 'Técnico', 'Sofisticado', 'Provocador',
+      'Acolhedor', 'Elegante', 'Ousado', 'Minimalista', 'Empático', 'Confiante', 'Descontraído', 'Poético', 'Direto', 'Irreverente', 'Autêntico', 'Didático']],
     ['4.3', 'Existem marcas ou figuras públicas com as quais você se identifica nesse sentido? (perfis do Instagram, vídeos…)'],
   ] },
   { n: 5, title: 'Referências visuais', qs: [
@@ -175,15 +193,14 @@ export const BRIEFING_FORM = [
     ['7.3', 'Você já tem presença online? Quer manter ou reformular?', ['Quero manter', 'Podemos reformular', 'Ainda não tenho']],
   ] },
   { n: 8, title: 'Prazo e sucesso', qs: [
-    ['8.1', 'Qual é o prazo ideal para entrega do projeto?'],
+    ['8.1', 'Qual é o prazo ideal para entrega do projeto?', null, 'date'],
     ['8.2', 'Há algum evento, lançamento ou campanha que depende da identidade?'],
     ['8.3', 'O que seria, para você, um resultado de sucesso neste projeto?'],
   ] },
   { n: 9, title: 'Investimento e materiais', qs: [
-    ['9.1', 'Você já tem uma ideia de quanto pretende investir neste projeto?'],
+    ['9.1', 'Você já tem uma ideia de quanto pretende investir neste projeto?', null, 'money'],
     ['anexos', 'Materiais existentes (logos antigas, paleta, rascunhos): cole os links'],
     ['10.1', 'Já possui algum material que deve ser mantido ou considerado? (logo anterior, paleta, slogan…)'],
-    ['10.2', 'Você já tem uma identidade visual? Está satisfeito com ela? Por quê?'],
   ] },
   { n: 10, title: 'Processo', qs: [
     ['11.1', 'Quem será o responsável por aprovar as etapas do projeto?'],
@@ -191,7 +208,14 @@ export const BRIEFING_FORM = [
     ['11.3', 'Você está aberto a sugestões criativas fora do esperado, caso façam sentido com a estratégia?', ['Sim', 'Depende — podemos conversar', 'Não']],
   ] },
 ];
-export const BRIEFING_QS = BRIEFING_FORM.flatMap(s => s.qs.map(([n, q, opts]) => ({ key: 'q' + n.replace('.', '_'), n, q, opts, section: s.n })));
+export const BRIEFING_QS = BRIEFING_FORM.flatMap(s => s.qs.map(([n, q, opts, type], i) =>
+  ({ key: 'q' + n.replace('.', '_'), n, d: `${s.n}.${i + 1}`, q, opts, type, section: s.n })));
+
+export const PAYMENT_FORMS = ['Pix', 'Cartão de crédito', 'Boleto', 'Transferência', 'À vista', 'Parcelado', '50% entrada + 50% entrega'];
+
+// Funções da equipe (o papel no ATLAS, que define acesso, é outra coisa)
+export const TEAM_FUNCTIONS = ['Direção criativa', 'Designer', 'Designer de marca', 'UX/UI designer', 'Desenvolvedor(a)', 'Social media',
+  'Copywriter', 'Motion designer', 'Fotógrafo(a) / videomaker', 'Estrategista', 'Comercial', 'Gestão de projetos', 'Atendimento', 'Financeiro'];
 
 export const PROJECT_STATUS = {
   ativo: 'Em andamento',
@@ -209,7 +233,7 @@ export const STAGES = [
     next: { title: 'Comece pelo que é sucesso.', text: 'Escreva o objetivo em uma frase e valide com o cliente.', cta: null },
     why: 'Uma frase que define o sucesso do projeto. Sem isso, nada começa.',
     output: 'Objetivo escrito e validado pelo cliente',
-    tasks: { base: ['Reunião de kickoff', 'Escrever o objetivo em uma frase', 'Validar objetivo com o cliente'] },
+    tasks: { base: ['Reunião de kickoff', 'Escrever o objetivo em uma frase', 'Validar objetivo com o cliente', 'Registrar contrato assinado'] },
   },
   {
     key: 'briefing', n: 2, name: 'Briefing completo',
@@ -226,7 +250,7 @@ export const STAGES = [
     why: 'Nada trava por falta de material. Tudo num lugar só.',
     output: 'Pasta do cliente + acessos registrados',
     tasks: {
-      base: ['Criar pasta no Drive', 'Receber logos e materiais atuais', 'Registrar contrato assinado'],
+      base: ['Criar pasta no Drive', 'Receber logos e materiais atuais'],
       web: ['Acesso ao domínio / DNS', 'Acesso à hospedagem', 'Conteúdos e textos das páginas'],
       social: ['Acesso às redes sociais'],
     },
@@ -239,6 +263,7 @@ export const STAGES = [
     tasks: {
       base: ['Mapear 3–5 concorrentes', 'Levantar similares e referências', 'Montar moodboard', 'Resumo de oportunidades'],
       web: ['Benchmark de UX dos concorrentes'],
+      marketing: ['Diagnóstico de vendas e canais atuais'],
     },
   },
   {
@@ -262,6 +287,7 @@ export const STAGES = [
       branding: ['Logo principal', 'Variações e versões', 'Paleta de cores', 'Tipografia', 'Aplicações e mockups', 'Manual de marca'],
       web: ['UI desktop', 'UI mobile', 'Desenvolvimento front-end', 'Integrações / CMS', 'SEO básico', 'Testes de responsividade'],
       social: ['Templates de post', 'Grid inicial', 'Calendário de conteúdo'],
+      marketing: ['Funil de vendas', 'Linha editorial e calendário', 'Campanhas', 'Copywriting', 'Métricas e relatório'],
       produto: ['Protótipo', 'Testes internos'],
       conteudo: ['Roteiros', 'Produção', 'Edição'],
     },
@@ -295,10 +321,58 @@ export const STAGES = [
   },
 ];
 
+// Jornadas próprias por serviço. Usam as mesmas 9 posições (chaves) do processo, então os painéis
+// que comparam projetos continuam funcionando; mudam nome, porquê, entregável, próximo passo e tarefas.
+export const JOURNEYS = {
+  web: {
+    label: 'Desenvolvimento web',
+    objetivo: { name: 'Objetivo e escopo', why: 'O que o site precisa entregar e o que entra no escopo.', output: 'Objetivo, escopo e contrato assinados',
+      next: { title: 'Antes do código, o porquê.', text: 'Feche o objetivo do site, o escopo de páginas e o contrato.', cta: null },
+      tasks: ['Reunião de kickoff', 'Definir o objetivo do site em uma frase', 'Fechar escopo de páginas e funcionalidades', 'Registrar contrato assinado'] },
+    briefing: { name: 'Briefing do site', why: 'Público, referências, funcionalidades e metas do site.', output: 'Briefing aprovado',
+      next: { title: 'Vamos entender o site de {name}.', text: 'Público, referências e o que o site precisa fazer.', cta: ['briefing', 'Abrir briefing'] },
+      tasks: ['Preencher briefing no Hub', 'Mapear público e jornada do visitante', 'Listar sites de referência', 'Aprovar briefing'] },
+    arquivos: { name: 'Conteúdo e acessos', why: 'Sem textos, imagens e acessos o site não sai do lugar.', output: 'Domínio, hospedagem e conteúdos em mãos',
+      next: { title: 'Tudo num lugar só.', text: 'Domínio, hospedagem, textos, fotos e a marca aprovada.', cta: null },
+      tasks: ['Acesso ao domínio / DNS', 'Acesso à hospedagem', 'Receber textos das páginas', 'Receber fotos e vídeos', 'Receber a marca (ou o projeto de branding)'] },
+    pesquisa: { name: 'Arquitetura', why: 'A estrutura antes da forma: páginas, menus e caminhos.', output: 'Sitemap e jornada aprovados',
+      next: { title: 'A estrutura antes da forma.', text: 'Sitemap, caminhos do visitante e palavras-chave.', cta: ['moodboard', 'Abrir moodboard'] },
+      tasks: ['Benchmark de UX dos concorrentes', 'Sitemap', 'Jornada do usuário e chamadas para ação', 'Palavras-chave (SEO)'] },
+    conceito: { name: 'Wireframes', why: 'O esqueleto de cada página, sem cor, para validar o conteúdo.', output: 'Wireframes aprovados',
+      next: { title: 'O esqueleto de cada página.', text: 'Valide o conteúdo e a ordem das seções antes do visual.', cta: null },
+      tasks: ['Wireframe desktop', 'Wireframe mobile', 'Validar wireframes com o cliente'] },
+    implementacao: { name: 'Design de interface', why: 'A identidade aplicada às telas.', output: 'Layout aprovado (desktop e mobile)',
+      next: { title: 'A marca vira tela.', text: 'UI desktop e mobile, componentes e estados.', cta: ['marca', 'Ver a marca'] },
+      tasks: ['UI desktop', 'UI mobile', 'Componentes e estados (botões, formulários)', 'Aprovar layout'] },
+    apresentacao: { name: 'Desenvolvimento', why: 'O site ganha vida: código, painel e integrações.', output: 'Site funcionando em ambiente de teste',
+      next: { title: 'Hora de codar.', text: 'Front-end, painel de edição, integrações e SEO técnico.', cta: null },
+      tasks: ['Desenvolvimento front-end', 'CMS / painel de edição', 'Integrações (formulários, WhatsApp, analytics)', 'SEO técnico (títulos, sitemap, velocidade)'] },
+    revisao: { name: 'Testes e revisão', why: 'Nada vai ao ar sem ser testado em todo lugar.', output: 'Site testado e aprovado por escrito',
+      next: { title: 'Teste tudo, em todo lugar.', text: 'Links, formulários, celular e velocidade. Aprovação por escrito.', cta: ['notas', 'Abrir notas'] },
+      tasks: ['QA: links e formulários', 'Testes de responsividade', 'Teste de velocidade (PageSpeed)', 'Aplicar ajustes e aprovação final por escrito'] },
+    entrega: { name: 'Publicação e entrega', why: 'No ar, com o cliente sabendo usar.', output: 'Site no ar + treinamento + NPS',
+      next: { title: 'No ar!', text: 'Publicar, apontar o domínio, treinar o cliente e pedir o NPS.', cta: null },
+      tasks: ['Deploy em produção', 'Apontar domínio e SSL', 'Treinamento / handoff do painel', 'Enviar pesquisa NPS', 'Registrar case no portfólio'] },
+  },
+};
+
+// Etapa com os textos da jornada do serviço (quando houver)
+export function stageDef(key, track) {
+  const base = STAGES.find(s => s.key === key);
+  const o = JOURNEYS[track]?.[key];
+  return base && o ? { ...base, ...o } : base;
+}
+export const stagesFor = track => STAGES.map(s => stageDef(s.key, track));
+
 export function stageTasksFor(stage, track) {
-  const t = stage.tasks;
+  const o = JOURNEYS[track]?.[stage.key];
+  if (o?.tasks) return o.tasks;
+  const t = STAGES.find(s => s.key === stage.key).tasks;
   return [...(t.base || []), ...(t[track] || [])];
 }
+
+// Plano: cada etapa leva 3 dias a partir do início do projeto
+export const STAGE_DAYS = 3;
 
 // ------------------------------------------------------------
 // Leads — funil de conversão

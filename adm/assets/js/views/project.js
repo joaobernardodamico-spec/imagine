@@ -1,10 +1,10 @@
 // Página do projeto: barra de navegação no topo, capa, jornada das 9 etapas e as abas
 // (visão geral com as etapas, briefing, moodboard, marca, notas, equipe, financeiro).
 import { store, uid } from '../store.js';
-import { STAGES, TRACKS, TRACK_ICONS, PROJECT_STATUS, PROJECT_ROLES, SERVICES } from '../config.js';
+import { STAGES, TRACKS, TRACK_ICONS, PROJECT_STATUS, PROJECT_ROLES, SERVICES, JOURNEYS, stagesFor } from '../config.js';
 import {
   me, role, profile, progressOf, stagesOf, tasksOf, toggleTask, completeStage, reopenStage,
-  canEditProject, seesMoney, isSocio, receive, projectKind, clientLabel, account,
+  canEditProject, seesMoney, isSocio, receive, projectKind, clientLabel, account, plannedEnd, paceOf,
 } from '../ops.js';
 import { award } from '../game.js';
 import { esc, icon, avatar, modal, money, date, relDays, progressBar, empty, ago, toast, safeUrl } from '../util.js';
@@ -95,6 +95,7 @@ export default {
 
     toggleTask(el) { const t = store.find('tasks', el.dataset.id); if (t) toggleTask(t); },
     openTask(el) { openTask(el.dataset.id); },
+    goStage(el, e, { id }) { history.replaceState(null, '', `#/projetos/${id}/visao/${el.dataset.key}`); window.dispatchEvent(new HashChangeEvent('hashchange')); },
     completeStage(el, e, { id }) { completeStage(id, el.dataset.key); },
     reopenStage(el, e, { id }) { if (confirm('Reabrir esta etapa?')) reopenStage(id, el.dataset.key); },
 
@@ -185,25 +186,37 @@ function ring(pct) {
 // Jornada: as 9 etapas em linha. Cada uma abre a própria caixa.
 // ------------------------------------------------------------
 function journey(p, pr, selKey) {
+  const pace = paceOf(p);
+  const fmt = d => date(d, { day: '2-digit', month: 'short' });
   return `<section class="journey card">
     <div class="jmain">
-    <div class="journey-head"><h2>Jornada do projeto</h2></div>
-    <ol class="jsteps">${STAGES.map(def => {
+    <div class="journey-head"><h2>Jornada do projeto</h2>${JOURNEYS[p.track] ? `<span class="pill pill-journey">${icon(TRACK_ICONS[p.track] || 'folder', 13)}${esc(JOURNEYS[p.track].label)}</span>` : ''}</div>
+    <ol class="jsteps">${stagesFor(p.track).map(def => {
       const s = pr.stages.find(x => x.key === def.key);
       const st = s?.status || 'pendente';
       const t = tasksOf(p.id, def.key);
+      const plan = plannedEnd(p, def.n);
+      const late = st !== 'concluida' && plan && plan < new Date().toISOString().slice(0, 10);
       return `<li class="jstep jstep-${st} ${def.key === selKey ? 'sel' : ''}">
-        <a href="#/projetos/${esc(p.id)}/visao/${def.key}" title="${esc(def.why)}">
+        <a href="#/projetos/${esc(p.id)}/visao/${def.key}" title="${esc(def.why)}" data-act="goStage" data-key="${def.key}">
           <span class="jdot">${st === 'concluida' ? icon('check', 16) : def.n}</span>
           <span class="jname">${esc(def.name)}</span>
           <small>${t.filter(x => x.done).length}/${t.length}</small>
+          ${st === 'concluida' && s.done_at ? `<em class="jdate done">${icon('check', 11)} ${fmt(s.done_at)}</em>`
+            : plan ? `<em class="jdate ${late ? 'late' : ''}" title="Previsto: 3 dias por etapa a partir do início">${fmt(plan)}</em>` : ''}
         </a>
       </li>`;
     }).join('')}</ol>
     </div>
     <div class="jprog">
-      ${ring(pr.pct)}
-      <div class="jprog-nums"><strong>${pr.doneTasks}<small> de ${pr.totalTasks}</small></strong><span>tarefas</span><em>${pr.doneStages} de 9 etapas</em></div>
+      <div class="jprog-top">
+        ${ring(pr.pct)}
+        <div class="jprog-nums"><strong>${pr.doneTasks}<small> de ${pr.totalTasks}</small></strong><span>tarefas</span><em>${pr.doneStages} de 9 etapas</em></div>
+      </div>
+      <div class="jpace jpace-${pace.kind}">
+        <span class="jdue">${icon('calendar', 13)} ${p.due_date ? `Entrega ${date(p.due_date, { day: '2-digit', month: 'short' })} · ${relDays(p.due_date)}` : 'Sem prazo de entrega'}</span>
+        <p>${esc(pace.text)}</p>
+      </div>
     </div>
   </section>`;
 }
@@ -307,13 +320,14 @@ function alliancesCard(p) {
 // ------------------------------------------------------------
 function stagesPanel(p, edit, key) {
   const pr = progressOf(p.id);
-  const def = STAGES.find(s => s.key === key) || STAGES[0];
+  const all = stagesFor(p.track);
+  const def = all.find(s => s.key === key) || all[0];
   const s = pr.stages.find(x => x.key === def.key);
   const st = s?.status || 'pendente';
   const tasks = tasksOf(p.id, def.key);
   const d = tasks.filter(t => t.done).length;
-  const idx = STAGES.indexOf(def);
-  const prev = STAGES[idx - 1], next = STAGES[idx + 1];
+  const idx = all.indexOf(def);
+  const prev = all[idx - 1], next = all[idx + 1];
   const cta = def.next?.cta;
 
   return `<div class="side-layout">

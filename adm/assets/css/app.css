@@ -1676,3 +1676,227 @@ textarea.bb-in.big { font-size: 18px; line-height: 1.4; }
 .ptop .tab .ic { color: var(--ink-3); }
 .ptop .tab.active .ic, .ptop .tab:hover .ic { color: var(--accent); }
 .phead .phead-cover { align-self: center; width: 100%; }
+
+/* ==========================================================
+   Rodada 2
+   ========================================================== */
+
+/* ---------- menu lateral: recolhido (só ícones), abre no hover, o logo esconde de vez ---------- */
+:root { --rail: 76px; }
+.side-brand { background: none; border: 0; cursor: pointer; text-align: left; width: 100%; }
+.side-brand .logo-mark { display: none; height: 24px; }
+.nav-reopen { display: none; }
+@media (min-width: 861px) {
+  .main { margin-left: var(--rail); transition: margin-left .25s; }
+  .sidebar { width: var(--rail); overflow: hidden; transition: width .22s cubic-bezier(.2, .8, .2, 1), box-shadow .22s, transform .25s; }
+  .sidebar:hover, .sidebar:focus-within { width: var(--side); box-shadow: var(--shadow-lg); }
+  .sidebar .side-brand { padding: 18px 14px 14px; gap: 10px; }
+  .sidebar .logo-chip { min-width: 48px; justify-content: center; }
+  .sidebar:not(:hover):not(:focus-within) .logo-full,
+  .sidebar:not(:hover):not(:focus-within) .brand-tag,
+  .sidebar:not(:hover):not(:focus-within) .demo-pill { display: none; }
+  .sidebar:not(:hover):not(:focus-within) .logo-mark { display: block; }
+  .nav { padding: 6px 12px 12px; overflow-x: hidden; }
+  .nav-item { white-space: nowrap; }
+  .nav-item span, .nav-group { transition: opacity .15s; }
+  .sidebar:not(:hover):not(:focus-within) .nav-item { justify-content: center; padding: 11px 0; }
+  .sidebar:not(:hover):not(:focus-within) .nav-item span { opacity: 0; width: 0; overflow: hidden; }
+  .sidebar:not(:hover):not(:focus-within) .nav-group { font-size: 0; padding: 0; margin: 10px 8px; height: 1px; background: var(--line); border: 0; }
+  .sidebar:not(:hover):not(:focus-within) .nav-group:first-child { display: none; }
+  .sidebar:not(:hover):not(:focus-within) .user-card { padding: 12px 0; display: grid; place-items: center; }
+  .sidebar:not(:hover):not(:focus-within) .user-meta,
+  .sidebar:not(:hover):not(:focus-within) .xp-mini,
+  .sidebar:not(:hover):not(:focus-within) .user-actions { display: none; }
+  .user-card-main, .user-meta { white-space: nowrap; }
+  /* escondido de vez pelo logo */
+  body.nav-hidden .sidebar { transform: translateX(-100%); box-shadow: none; }
+  body.nav-hidden .main { margin-left: 0; }
+  body.nav-hidden .nav-reopen { display: grid; position: fixed; top: 12px; left: 12px; z-index: 45; border: 0; background: none; padding: 0; cursor: pointer; filter: drop-shadow(0 6px 16px rgba(29, 92, 240, .3)); transition: transform .15s; }
+  body.nav-hidden .nav-reopen:hover { transform: scale(1.06); }
+  body.nav-hidden .nav-reopen img { height: 22px; }
+  body.nav-hidden .page { padding-left: 72px; }
+  body.nav-hidden .page-project .ptop { margin-left: -72px; padding-left: 72px; }
+}
+
+/* ---------- Projetos: painéis que abrem só ao clicar ---------- */
+.eco-map { margin-bottom: 16px; }
+.eco-branch { background: none; border: 0; border-left: 1px solid var(--line); text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.eco-branch.active { box-shadow: inset 0 -3px 0 var(--accent); }
+.drops { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; align-items: start; }
+.drop { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
+.drop-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 18px; text-align: left; }
+.drop-head span { display: flex; flex-direction: column; min-width: 0; }
+.drop-head strong { font-size: 14px; }
+.drop-head small { font-size: 12px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drop-head .ic { color: var(--ink-3); transition: transform .2s; }
+.drop.open .drop-head .ic { transform: rotate(180deg); color: var(--accent); }
+.drop-head:hover { background: var(--surface-2); }
+.drop-body { padding: 4px 18px 18px; animation: fade .2s; }
+@media (max-width: 860px) { .drops { grid-template-columns: 1fr; } }
+
+/* ---------- projeto: hero e jornada com datas, prazo e ritmo ---------- */
+.phead-main > .row { flex-wrap: wrap; row-gap: 8px; }
+.pill-journey { text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--accent); background: var(--accent-soft); border-color: transparent; }
+.jmain .journey-head { display: flex; align-items: center; gap: 10px; }
+.jdate { font-style: normal; font-size: 11px; color: var(--ink-3); background: var(--surface-2); border-radius: 6px; padding: 1px 7px; margin-top: 2px; display: inline-flex; align-items: center; gap: 3px; }
+.jdate.done { color: var(--ok); background: var(--ok-soft); }
+.jdate.late { color: var(--bad); background: var(--bad-soft); }
+.jprog { flex-direction: column; align-items: flex-start; gap: 10px; min-width: 230px; max-width: 280px; }
+.jprog-top { display: flex; align-items: center; gap: 14px; }
+.jpace { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); width: 100%; }
+.jpace .jdue { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.jpace p { color: var(--ink-2); line-height: 1.4; }
+.jpace-ok { background: var(--ok-soft); }
+.jpace-ok .jdue { color: var(--ok); }
+.jpace-bad { background: var(--bad-soft); }
+.jpace-bad .jdue { color: var(--bad); }
+@media (max-width: 1180px) { .jprog { max-width: none; } }
+
+/* ---------- briefing: degradê Cloud Dancer → azul-escuro, animado ---------- */
+.brief-nav { gap: 6px; padding: 10px; }
+.brief-nav a { background: var(--sec-bg); color: var(--sec-ink); border: 1px solid color-mix(in srgb, var(--sec-ink) 10%, transparent);
+  transition: transform .18s, box-shadow .18s; animation: secIn .45s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i) * 40ms); }
+.brief-nav a:hover { background: var(--sec-bg); color: var(--sec-ink); transform: translateX(4px); box-shadow: 0 6px 16px rgba(11, 27, 63, .14); }
+.brief-nav a.active { background: var(--sec-bg); color: var(--sec-ink); font-weight: 700; box-shadow: 0 0 0 2px var(--accent), 0 8px 20px rgba(11, 27, 63, .18); transform: translateX(6px); }
+.brief-nav a .bn-n { background: color-mix(in srgb, var(--sec-ink) 14%, transparent); color: var(--sec-ink); }
+.brief-nav a.active .bn-n { background: var(--sec-ink); color: var(--sec-bg); }
+.brief-nav a.full .bn-n { background: var(--ok); color: #fff; }
+.brief-nav small { color: inherit; opacity: .7; }
+@keyframes secIn { from { opacity: 0; transform: translateX(-10px); } }
+.bsec { border-top: 6px solid var(--sec-bg); }
+.bsec.on { animation: rise .3s cubic-bezier(.2, .8, .2, 1); }
+.bsec-n { background: var(--sec-bg); color: var(--sec-ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sec-ink) 15%, transparent); }
+.bq-row { display: flex; align-items: center; gap: 12px; margin-left: 40px; flex-wrap: wrap; }
+.bq-row .muted { font-size: 12.5px; }
+.bq-date, .bq-money { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line-2); border-radius: var(--radius); padding: 0 12px; background: var(--surface); color: var(--ink-3); }
+.bq-date:focus-within, .bq-money:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.bq-date input, .bq-money input { border: 0; padding: 9px 0; box-shadow: none !important; width: auto; background: transparent; font-size: 15px; }
+.bq-money span { font-weight: 700; color: var(--ink-2); }
+.bq-money input { width: 160px; font-weight: 700; color: var(--ink); }
+.bq-was { margin-left: 40px; font-size: 12.5px; color: var(--ink-3); font-style: italic; }
+@media (max-width: 860px) { .bq-row, .bq-was { margin-left: 0; } .brief-nav a:hover, .brief-nav a.active { transform: none; } }
+
+/* ---------- moodboard: origem, lápis e redimensionar ---------- */
+.mlink { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: rgba(255, 255, 255, .94); color: #0B1B3F; opacity: 0; transform: translateY(-4px); transition: opacity .15s, transform .15s; z-index: 2; }
+.mframe-img:hover .mlink { opacity: 1; transform: none; }
+.mlink:hover { color: var(--accent); }
+.mname { flex: 1; display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 12px; font-weight: 700; }
+.mcap .mname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mpen { display: inline-grid; place-items: center; width: 22px; height: 22px; min-width: 22px; border-radius: 6px; background: rgba(255, 255, 255, .2); color: #fff; }
+.mpen:hover { background: #fff; color: #0B1B3F; }
+.mresize { position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; cursor: nwse-resize; z-index: 3; opacity: 0; transition: opacity .15s;
+  background: linear-gradient(135deg, transparent 50%, rgba(255, 255, 255, .95) 50%); }
+.mresize::after { content: ""; position: absolute; right: 4px; bottom: 4px; width: 8px; height: 8px; border-right: 2px solid #0B1B3F; border-bottom: 2px solid #0B1B3F; }
+.mframe-img:hover .mresize, .mframe.resizing .mresize { opacity: 1; }
+.mframe.resizing { transform: none !important; outline: 2px solid var(--accent); outline-offset: 3px; z-index: 4; }
+.mframe.resizing .mcap { opacity: 0; }
+.mframe .mnote-dot { right: auto; left: 8px; }
+.mood-grid { transition: none; }
+@media (max-width: 860px) { .mframe-img[data-w="3"], .mframe-img[data-w="4"] { grid-column: span 2 !important; } }
+
+/* ---------- avatar com foto ---------- */
+.avatar.has-photo { overflow: hidden; padding: 0; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+/* ---------- Hoje: minha operação (missões por área) ---------- */
+.ops { padding: 20px 22px; }
+.ops-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.ops-top h2 { font-size: 18px; }
+.ops-top p { font-size: 13px; margin-top: 2px; }
+.ops-meter { display: flex; flex-direction: column; gap: 6px; min-width: 150px; text-align: right; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.ops-meter .bar span { background: linear-gradient(90deg, var(--accent), var(--sky)); }
+.ops-areas { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 6px; }
+.ops-area { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; font-size: 13.5px; font-weight: 600; color: var(--ink-2); background: var(--surface); transition: all .15s; }
+.ops-area b { min-width: 22px; height: 22px; border-radius: 11px; display: grid; place-items: center; font-size: 11.5px; background: var(--surface-2); }
+.ops-area:hover { border-color: var(--accent); color: var(--accent); }
+.ops-area.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ops-area.on b { background: rgba(255, 255, 255, .22); color: #fff; }
+.area { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; }
+.area-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.area-head strong { font-size: 14px; }
+.area-head .muted { font-size: 12.5px; flex: 1; }
+.area-ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.opj { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+.opj-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.opj-head a { display: flex; flex-direction: column; flex: 1; min-width: 180px; }
+.opj-head a strong { font-size: 14px; }
+.opj-head a small { font-size: 12px; color: var(--ink-3); }
+.opj-head a:hover strong { color: var(--accent); }
+.opj-flag { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: var(--warn-soft); color: var(--warn); }
+.opj-flag.ok { background: var(--ok-soft); color: var(--ok); }
+.opj-clear { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ok); margin-top: 6px; }
+.missions { list-style: none; display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.mission { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-radius: 8px; font-size: 13.5px; }
+.mission:hover { background: var(--surface-2); }
+.mission .checkbox { width: 20px; height: 20px; min-width: 20px; }
+.mission-dot { width: 20px; height: 20px; min-width: 20px; border-radius: 6px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.mission-dot.late { background: var(--bad-soft); color: var(--bad); }
+.mission-title { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+a.mission-title:hover, button.mission-title:hover { color: var(--accent); }
+.mission .xp-chip { background: var(--accent-soft); padding: 2px 7px; border-radius: 6px; font-size: 11px; }
+.mission .btn-sm { height: 28px; }
+/* abas do projeto: alinhadas à direita sem cortar o começo quando falta espaço */
+.ptop .tabs { justify-content: flex-start; }
+.ptop .tabs .tab:first-child { margin-left: auto; }
+
+/* ==========================================================
+   Marca ATLAS: o ícone e a escrita vêm de máscaras, então a cor segue o tema
+   (azul-escuro no claro, branco no escuro)
+   ========================================================== */
+:root { --atlas: #112F72; }
+:root[data-theme="dark"] { --atlas: #FFFFFF; }
+.atlas-mark, .atlas-word, .atlas-full { display: inline-block; background: var(--atlas); -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+.atlas-mark { width: 36px; height: 36px; -webkit-mask-image: url("../img/atlas-icon-navy.png"); mask-image: url("../img/atlas-icon-navy.png"); }
+.atlas-full { width: 132px; height: 30px; -webkit-mask-image: url("../img/atlas-navy.png"); mask-image: url("../img/atlas-navy.png"); }
+.atlas-word { display: none; }
+.boot-logo { height: 40px; width: auto; animation: pulse 1.4s ease-in-out infinite; }
+:root[data-theme="dark"] .boot-logo { filter: brightness(0) invert(1); }
+
+/* menu: ícone sozinho recolhido; ícone + ATLAS quando abre */
+.side-brand { display: flex; align-items: center; gap: 0; padding: 20px 20px 14px; color: var(--atlas); }
+.side-brand:hover .atlas-mark { transform: rotate(-8deg); }
+.side-brand .atlas-mark { transition: transform .25s; flex-shrink: 0; }
+.sidebar .side-brand { padding: 20px 20px 16px; }
+@media (min-width: 861px) {
+  .sidebar .side-brand { justify-content: flex-start; padding-left: 20px; }
+  .sidebar:hover .atlas-word, .sidebar:focus-within .atlas-word { display: inline-block; width: 104px; height: 26px; margin-left: 10px;
+    -webkit-mask-image: url("../img/atlas-navy.png"); mask-image: url("../img/atlas-navy.png"); -webkit-mask-position: right center; mask-position: right center;
+    -webkit-mask-size: auto 100%; mask-size: auto 100%; }
+}
+@media (max-width: 860px) {
+  .sidebar .atlas-word { display: inline-block; width: 104px; height: 26px; margin-left: 10px;
+    -webkit-mask-image: url("../img/atlas-navy.png"); mask-image: url("../img/atlas-navy.png"); -webkit-mask-position: right center; mask-position: right center;
+    -webkit-mask-size: auto 100%; mask-size: auto 100%; }
+  .topbar .atlas-full { width: 104px; height: 24px; }
+}
+.nav-reopen .atlas-mark { width: 40px; height: 40px; }
+body.nav-hidden .nav-reopen { background: var(--surface) !important; border-radius: 12px !important; padding: 6px !important; box-shadow: var(--shadow); filter: none !important; }
+
+/* login: ATLAS + IMAGINE no painel azul */
+.login-logo { display: flex; align-items: center; gap: 18px; position: relative; z-index: 1; }
+.login-logo .atlas-full { --atlas: #FFFFFF; width: 200px; height: 46px; }
+.login-logo img { height: 52px; width: auto; }
+
+/* ---------- Projetos: os 3 serviços logo abaixo do núcleo ---------- */
+.svc-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.svc-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; text-align: left; padding: 18px; border-radius: var(--radius-lg);
+  background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); color: var(--ink); transition: transform .18s, box-shadow .18s, border-color .18s; }
+.svc-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--accent); }
+.svc-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
+.svc-ic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; color: #fff; }
+.svc-branding .svc-ic { background: linear-gradient(140deg, #1D5CF0, #59C6FE); }
+.svc-marketing .svc-ic { background: linear-gradient(140deg, #112F72, #3B73D8); }
+.svc-web .svc-ic { background: linear-gradient(140deg, #0A9BD6, #1D5CF0); }
+.svc-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.svc-txt small { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.svc-txt strong { font-family: var(--font-title); font-size: 16px; line-height: 1.2; letter-spacing: -.01em; }
+.svc-txt em { font-style: normal; font-size: 12.5px; color: var(--ink-2); }
+.svc-names { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.svc-names i { font-style: normal; font-size: 11.5px; padding: 2px 8px; border-radius: 6px; background: var(--surface-2); color: var(--ink-2); }
+.svc-n { font-family: var(--font-title); font-size: 30px; letter-spacing: -.03em; color: var(--accent); align-self: start; }
+.seg-svc .seg-btn { gap: 6px; }
+@media (max-width: 1100px) { .svc-strip { grid-template-columns: 1fr; } }
+/* escrita ATLAS sozinha (sem a ponta da estrela), na proporção certa ao lado do ícone */
+.sidebar .atlas-word { width: 92px !important; height: 30px !important; margin-left: 2px !important;
+  -webkit-mask-image: url("../img/atlas-word-navy.png") !important; mask-image: url("../img/atlas-word-navy.png") !important;
+  -webkit-mask-size: contain !important; mask-size: contain !important; -webkit-mask-position: left center !important; mask-position: left center !important; }

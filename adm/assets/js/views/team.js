@@ -1,6 +1,6 @@
 // Equipe e configurações (só sócios).
 import { store } from '../store.js';
-import { ROLES, ACCESS, DEMO } from '../config.js';
+import { ROLES, ACCESS, DEMO, TEAM_FUNCTIONS } from '../config.js';
 import { me } from '../ops.js';
 import { levelOf, xpOf } from '../game.js';
 import { esc, icon, avatar, modal, toast } from '../util.js';
@@ -93,9 +93,12 @@ function memberModal(p = {}) {
     fields: [
       { name: 'name', label: 'Nome', required: true, value: p.name },
       { name: 'email', label: 'E-mail', type: 'email', required: true, value: p.email },
-      { name: 'title', label: 'Função', value: p.title, placeholder: 'Ex.: Designer' },
-      { name: 'role', label: 'Papel no Hub', type: 'select', value: p.role || 'producao', options: Object.entries(ROLES).map(([k, r]) => [k, `${r.label} — ${r.desc}`]) },
-      { name: 'color', label: 'Cor', type: 'color', value: p.color || '#12328C' },
+      { name: 'title', label: 'Função', type: 'select', value: p.title || 'Designer',
+        options: [...new Set([...TEAM_FUNCTIONS, ...(p.title ? [p.title] : [])])], help: 'O que a pessoa faz no time.' },
+      { name: 'role', label: 'Papel no ATLAS', type: 'select', value: p.role || 'producao', options: Object.entries(ROLES).map(([k, r]) => [k, `${r.label} — ${r.desc}`]),
+        help: 'Define o que ela enxerga.' },
+      { name: 'avatar_url', label: 'Foto', type: 'image', crop: 1, value: p.avatar_url || '', help: 'Quadrada. Depois de escolher, arraste e use o zoom para enquadrar o rosto.' },
+      { name: 'color', label: 'Cor de fundo do avatar', type: 'color', value: p.color || '#1D5CF0', help: 'Aparece atrás da foto e nas iniciais.' },
       ...(!isNew ? [{ name: 'active', label: 'Status', type: 'checkbox', checkLabel: 'Ativo', value: p.active !== false }] : []),
     ],
     async onSubmit(v) {
