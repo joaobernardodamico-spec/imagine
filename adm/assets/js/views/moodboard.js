@@ -1,6 +1,7 @@
 // Moodboard do projeto: quadro em branco de referências.
-// Grade meio torta de molduras retangulares. Arraste imagens do computador para uma moldura,
-// cole com Ctrl+V ou adicione por link. No hover aparece o nome e o botão "Texto".
+// Grade meio torta de molduras. Cada moldura é uma posição fixa (o "sort" da imagem):
+// clique numa moldura vazia para escolher a imagem dela, solte um arquivo do computador
+// numa moldura, ou arraste uma imagem sobre outra para trocar as duas de lugar (mouse ou dedo).
 // O mesmo "Texto" é o diário de processo: simples, em formato de receita de bolo.
 import { store } from '../store.js';
 import { STAGES, JOURNAL } from '../config.js';
@@ -19,21 +20,25 @@ const SPAN = { 'w2 h2': [2, 2], 'w2': [2, 1], 'h2': [1, 2], '': [1, 1] };
 const sizeOf = (m, i) => [m.w || SPAN[SHAPES[i % SHAPES.length]][0], m.h || SPAN[SHAPES[i % SHAPES.length]][1]];
 
 export function moodPanel(p, edit) {
-  const items = moodItems(p.id);
-  const empties = Math.max(3, MIN_FRAMES - items.length);
+  const used = moodSlots(p.id);
+  const last = used.size ? Math.max(...used.keys()) : -1;
+  const total = Math.max(MIN_FRAMES, last + 1 + (edit ? 4 : 0));
   const frame = (i, inner, cls = '', attrs = '') =>
     `<div class="mframe ${cls === 'mframe-img' ? '' : SHAPES[i % SHAPES.length]} ${cls}" ${attrs.includes('style=') ? '' : `style="--tilt:${TILTS[i % TILTS.length]}deg"`} ${attrs}>${inner}</div>`;
   return `<section class="mood">
     <div class="mood-head">
       <div><div class="kicker">Quadro de referências</div><h2>Moodboard</h2>
-        <p class="muted">Arraste imagens do computador para as molduras, cole com Ctrl+V ou adicione por link. Passe o mouse para ver o nome e abrir o texto.</p></div>
+        <p class="muted">Clique numa moldura vazia ou solte uma imagem nela. Arraste uma imagem sobre outra para trocar de lugar e puxe o canto para mudar o tamanho.</p></div>
       ${edit ? `<div class="row gap-8 wrap">
         <button class="btn btn-ghost" data-act="moodUrl">${icon('link', 16)} Por link</button>
         <label class="btn btn-primary">${icon('upload', 16)} Enviar imagens<input type="file" accept="image/*" multiple hidden data-change="moodFiles"></label>
       </div>` : ''}
     </div>
     <div class="mood-grid ${edit ? 'can-edit' : ''}" id="mood">
-      ${items.map((m, i) => { const [w, h] = sizeOf(m, i); return frame(i, `
+      ${Array.from({ length: total }, (_, i) => {
+        const m = used.get(i);
+        if (!m) return edit ? frame(i, `<span>${icon('upload', 20)}<small>Clique ou solte</small></span>`, 'mframe-empty', `data-slot="${i}" role="button" tabindex="0" aria-label="Adicionar imagem nesta moldura"`) : '';
+        const [w, h] = sizeOf(m, i); return frame(i, `
         <img src="${esc(m.url)}" alt="${esc(m.title || 'Referência')}" loading="lazy" draggable="false">
         ${m.source && /^https?:/i.test(m.source) ? `<a class="mlink" href="${esc(safeUrl(m.source))}" target="_blank" rel="noopener" title="Abrir a origem: ${esc(m.source)}">${icon('link', 15)}</a>` : ''}
         <div class="mcap">
@@ -42,26 +47,56 @@ export function moodPanel(p, edit) {
           ${edit ? `<button class="mbtn mbtn-x" data-act="moodDel" data-id="${esc(m.id)}" title="Remover">${icon('trash', 14)}</button>` : ''}
         </div>
         ${m.note ? `<span class="mnote-dot" title="Tem texto"></span>` : ''}
-        ${edit ? `<span class="mresize" data-id="${esc(m.id)}" title="Arraste para redimensionar"></span>` : ''}`, 'mframe-img', `data-id="${esc(m.id)}" data-w="${w}" data-h="${h}" style="--tilt:${TILTS[i % TILTS.length]}deg;grid-column:span ${w};grid-row:span ${h}" ${edit ? 'draggable="true"' : ''}`); }).join('')}
-      ${edit ? Array.from({ length: empties }, (_, j) => frame(items.length + j, `<span>${icon('image', 20)}<small>Solte aqui</small></span>`, 'mframe-empty', `data-slot="${items.length + j}"`)).join('') : ''}
+        ${edit ? `<span class="mresize" data-id="${esc(m.id)}" title="Arraste para redimensionar"></span>` : ''}`, 'mframe-img', `data-id="${esc(m.id)}" data-slot="${i}" data-w="${w}" data-h="${h}" style="--tilt:${TILTS[i % TILTS.length]}deg;grid-column:span ${w};grid-row:span ${h}"`);
+      }).join('')}
     </div>
   </section>`;
 }
 
-async function addFiles(pid, files) {
+// Posição de cada imagem: o sort salvo, ou a próxima livre (imagens antigas com sort repetido)
+export function moodSlots(pid) {
+  const used = new Map();
+  let next = 0;
+  for (const m of moodItems(pid)) {
+    let s = Number.isInteger(m.sort) && m.sort >= 0 && !used.has(m.sort) ? m.sort : null;
+    if (s === null) { while (used.has(next)) next++; s = next; }
+    used.set(s, m);
+  }
+  return used;
+}
+const freeSlots = (pid, from = 0, n = 1) => {
+  const used = moodSlots(pid), out = [];
+  for (let s = from; out.length < n; s++) if (!used.has(s)) out.push(s);
+  return out;
+};
+
+async function addFiles(pid, files, startSlot = 0) {
   const imgs = [...files].filter(f => f.type.startsWith('image/'));
   if (!imgs.length) return;
-  let sort = moodItems(pid).length;
+  const slots = freeSlots(pid, startSlot, imgs.length);
   const rows = [];
-  for (const f of imgs) {
+  for (const [i, f] of imgs.entries()) {
     try {
-      rows.push({ project_id: pid, url: await shrinkImage(f, 900, .78), title: f.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' '), note: '', source: '', sort: sort++, created_by: me().id });
+      rows.push({ project_id: pid, url: await shrinkImage(f, 900, .78), title: f.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' '), note: '', source: '', sort: slots[i], created_by: me().id });
     } catch { toast(`Não consegui ler ${f.name}`, { kind: 'error' }); }
   }
   if (rows.length) { await store.insertMany('moodboard', rows); toast(`${rows.length} imagem${rows.length > 1 ? 'ns' : ''} no quadro`, { kind: 'success' }); }
 }
 
-// Drag & drop (arquivos de fora e troca de posição entre molduras) + colar
+// Troca duas posições (ou move para uma vazia)
+async function moveTo(pid, id, slot) {
+  const used = moodSlots(pid);
+  const from = [...used.entries()].find(([, m]) => m.id === id)?.[0];
+  if (from === undefined || from === slot) return;
+  const other = used.get(slot);
+  // fixa a posição de todas (corrige sort repetido de imagens antigas) e troca as duas
+  for (const [s, m] of used) {
+    const want = m.id === id ? slot : other && m.id === other.id ? from : s;
+    if (m.sort !== want) await store.update('moodboard', m.id, { sort: want }, { silent: true });
+  }
+  store.emit({});
+}
+
 export function wireMood(root, pid) {
   const grid = root.querySelector('#mood.can-edit');
   if (!grid) return;
@@ -93,11 +128,63 @@ export function wireMood(root, pid) {
     };
     h.addEventListener('pointermove', move); h.addEventListener('pointerup', up);
   }));
-  grid.querySelectorAll('.mframe-img').forEach(f => {
-    f.addEventListener('dragstart', e => { e.dataTransfer.setData('text/mood-id', f.dataset.id); f.classList.add('dragging'); });
-    f.addEventListener('dragend', () => f.classList.remove('dragging'));
+  // Moldura vazia: clique abre o seletor de arquivos daquela posição
+  const picker = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*', multiple: true, hidden: true });
+  grid.after(picker);
+  let pickSlot = 0;
+  picker.addEventListener('change', async () => { await addFiles(pid, picker.files, pickSlot); picker.value = ''; });
+  const openPicker = slot => { pickSlot = slot; picker.click(); };
+  grid.querySelectorAll('.mframe-empty').forEach(f => {
+    f.addEventListener('click', () => openPicker(+f.dataset.slot));
+    f.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openPicker(+f.dataset.slot); } });
   });
+
+  // Arrastar uma imagem sobre outra (mouse ou toque): troca as duas de lugar
+  grid.querySelectorAll('.mframe-img').forEach(f => {
+    f.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || e.target.closest('button, a, .mresize, input')) return;
+      const sx = e.clientX, sy = e.clientY;
+      let ghost = null, target = null;
+      const pick = (x, y) => {
+        if (ghost) ghost.style.visibility = 'hidden';
+        const el = document.elementFromPoint(x, y)?.closest('#mood .mframe');
+        if (ghost) ghost.style.visibility = '';
+        return el && el !== f ? el : null;
+      };
+      const move = ev => {
+        if (!ghost) {
+          if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 8) return;
+          const r = f.getBoundingClientRect();
+          ghost = f.cloneNode(true);
+          Object.assign(ghost.style, { position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', margin: 0, zIndex: 300, pointerEvents: 'none', opacity: .85, transform: 'rotate(2deg) scale(.96)' });
+          ghost.classList.add('mghost');
+          document.body.appendChild(ghost);
+          f.classList.add('dragging');
+          ghost.dataset.ox = sx - r.left; ghost.dataset.oy = sy - r.top;
+        }
+        ev.preventDefault();
+        ghost.style.left = ev.clientX - ghost.dataset.ox + 'px';
+        ghost.style.top = ev.clientY - ghost.dataset.oy + 'px';
+        const t = pick(ev.clientX, ev.clientY);
+        if (t !== target) { target?.classList.remove('over'); target = t; target?.classList.add('over'); }
+      };
+      const up = async () => {
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        document.removeEventListener('pointercancel', up);
+        if (!ghost) return;
+        ghost.remove(); f.classList.remove('dragging'); target?.classList.remove('over');
+        if (target) await moveTo(pid, f.dataset.id, +target.dataset.slot);
+      };
+      document.addEventListener('pointermove', move, { passive: false });
+      document.addEventListener('pointerup', up);
+      document.addEventListener('pointercancel', up);
+    });
+  });
+
+  // Arquivos vindos do computador (arrastar e soltar): entram na moldura onde caírem
   grid.addEventListener('dragover', e => {
+    if (!e.dataTransfer?.types?.includes('Files') && !e.dataTransfer?.types?.includes('text/uri-list')) return;
     e.preventDefault();
     grid.querySelectorAll('.over').forEach(x => x.classList.remove('over'));
     e.target.closest('.mframe')?.classList.add('over');
@@ -107,32 +194,23 @@ export function wireMood(root, pid) {
     e.preventDefault();
     const target = e.target.closest('.mframe');
     grid.querySelectorAll('.over').forEach(x => x.classList.remove('over'));
-    const moved = e.dataTransfer.getData('text/mood-id');
-    if (moved) {
-      const items = moodItems(pid);
-      const from = items.findIndex(m => m.id === moved);
-      const to = target?.dataset.id ? items.findIndex(m => m.id === target.dataset.id) : items.length - 1;
-      if (from < 0 || to < 0 || from === to) return;
-      const [it] = items.splice(from, 1); items.splice(to, 0, it);
-      for (const [i, m] of items.entries()) if (m.sort !== i) await store.update('moodboard', m.id, { sort: i });
-      return;
-    }
-    if (e.dataTransfer.files?.length) return addFiles(pid, e.dataTransfer.files);
+    const slot = target ? +target.dataset.slot : 0;
+    if (e.dataTransfer.files?.length) return addFiles(pid, e.dataTransfer.files, slot);
     const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
-    if (/^https?:\/\/\S+$/i.test(url)) await store.insert('moodboard', { project_id: pid, url, title: '', note: '', source: url, sort: moodItems(pid).length, created_by: me().id });
+    if (/^https?:\/\/\S+$/i.test(url)) await store.insert('moodboard', { project_id: pid, url, title: '', note: '', source: url, sort: freeSlots(pid, slot)[0], created_by: me().id });
   });
   // Ctrl+V com imagem copiada (um listener por vez)
   window.__moodPaste && document.removeEventListener('paste', window.__moodPaste);
   window.__moodPaste = e => {
     if (!document.getElementById('mood') || e.target.closest?.('input, textarea')) return;
     const files = [...(e.clipboardData?.files || [])];
-    if (files.length) { e.preventDefault(); addFiles(pid, files); }
+    if (files.length) { e.preventDefault(); addFiles(pid, files, 0); }
   };
   document.addEventListener('paste', window.__moodPaste);
 }
 
 export const moodActions = {
-  async moodFiles(el, e, { id }) { await addFiles(id, el.files); el.value = ''; },
+  async moodFiles(el, e, { id }) { await addFiles(id, el.files, 0); el.value = ''; },
   moodUrl(el, e, { id }) {
     modal({
       title: 'Referência por link',
@@ -141,7 +219,7 @@ export const moodActions = {
         { name: 'title', label: 'Nome da referência', full: true },
         { name: 'source', label: 'Fonte (página, perfil, Behance…)', full: true },
       ],
-      async onSubmit(v) { await store.insert('moodboard', { project_id: id, ...v, note: '', sort: moodItems(id).length, created_by: me().id }); },
+      async onSubmit(v) { await store.insert('moodboard', { project_id: id, ...v, note: '', sort: freeSlots(id)[0], created_by: me().id }); },
     });
   },
   moodInfo(el) {

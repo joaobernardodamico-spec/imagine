@@ -1960,3 +1960,11 @@ body.nav-hidden .nav-reopen { background: var(--surface) !important; border-radi
 .nav-item.active .nav-ic { color: var(--accent); }
 /* briefing: seção começa branca e ganha cor conforme é respondida */
 .brief-nav a { transition: background .5s, color .3s, transform .18s, box-shadow .18s; border-color: var(--line); }
+
+/* moodboard: arrastar com mouse ou dedo, moldura vazia clicável */
+.mood-grid.can-edit .mframe-img { cursor: grab; touch-action: none; user-select: none; }
+.mframe-img.dragging { opacity: .3; }
+.mghost { box-shadow: 0 20px 50px rgba(0, 0, 0, .3); }
+.mframe-empty { cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+.mframe-empty:hover, .mframe-empty:focus-visible { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.mframe-img.over { outline: 3px solid var(--accent); outline-offset: 3px; }
