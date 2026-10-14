@@ -146,7 +146,7 @@ function render() {
   app.innerHTML = `
   <div class="game">
     <header class="hud">
-      <img class="logo" src="assets/ui/logo.svg" alt="Elementarios"><img class="logo-e" src="assets/ui/_E.webp" alt="Elementarios">
+      <img class="logo" src="assets/ui/logo.svg" alt="Elementarios"><img class="logo-e" src="assets/ui/monograma.webp" alt="Elementarios">
       <div class="res">
         <div class="round-plate"><small>RODADA</small><b>${G.round}</b></div>
         <div class="gem hp" id="hud-hp" title="Vida do Feiticeiro">${ICON.heart()}${p.hp}</div>
