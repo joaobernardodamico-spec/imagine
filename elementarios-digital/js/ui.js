@@ -3,7 +3,7 @@
 const $ = s => document.querySelector(s);
 const app = $('#app');
 const UI = { tab: 'estoque', fTier: 'meu', fRealm: null, fTribe: null, onlyWish: false, targeting: null,
-  timer: 0, timerMax: 30, timerOn: true, interval: null, speed: 1, drag: null, phase: 'menu', grim: true };
+  timer: 0, timerMax: 30, timerOn: true, interval: null, speed: 1, drag: null, phase: 'menu', grim: false };
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const realmVar = r => `var(--${r})`;
@@ -52,7 +52,23 @@ const RELIC = {
   amuleto: c => `<svg viewBox="0 0 64 64"><path d="M12 6 Q32 26 52 6" fill="none" stroke="#8a6a1c" stroke-width="2"/><path d="M32 18l18 18-18 22-18-22z" fill="#123b1c" stroke="#56e07a" stroke-width="3"/>
     ${[0, 1, 2].map(i => `<circle cx="${24 + i * 8}" cy="38" r="3" fill="${i < c ? '#56e07a' : '#1d4a28'}" ${i < c ? 'style="filter:drop-shadow(0 0 4px #56e07a)"' : ''}/>`).join('')}</svg>`,
 };
-const rIcon = (r, color) => (ICON[r] ? ICON[r](color || `var(--${r})`) : '');
+const rIcon = r => (REALMS[r] ? `<i class="sym sym-${r}" title="${REALMS[r].name}"></i>` : (r === 'eter' ? ICON.eter('var(--eter)') : ''));
+const rankLabel = tribe => ({ 1: 'A', 11: 'J', 12: 'Q', 13: 'K' }[TRIBES[tribe].rank] || String(TRIBES[tribe].rank));
+// cartinha em miniatura (valor + naipe) usada no poker
+const chip = (rank, realm, cls = '') => `<span class="chip ${cls}" style="--realm:var(--${realm})"><b>${rank}</b>${rIcon(realm)}</span>`;
+const chipOf = m => chip(rankLabel(m.tribe), m.realm);
+const POKER_EXAMPLE = {
+  par: [['A', 'fogo'], ['A', 'agua']],
+  doispares: [['A', 'fogo'], ['A', 'ar'], ['K', 'agua'], ['K', 'terra']],
+  trinca: [['7', 'fogo'], ['7', 'agua'], ['7', 'terra']],
+  sequencia: [['5', 'ar'], ['6', 'fogo'], ['7', 'terra'], ['8', 'agua'], ['9', 'fogo']],
+  flush: [['2', 'fogo'], ['5', 'fogo'], ['8', 'fogo'], ['J', 'fogo'], ['K', 'fogo']],
+  full: [['Q', 'agua'], ['Q', 'ar'], ['Q', 'terra'], ['4', 'fogo'], ['4', 'agua']],
+  quadra: [['9', 'fogo'], ['9', 'agua'], ['9', 'ar'], ['9', 'terra']],
+  sflush: [['4', 'agua'], ['5', 'agua'], ['6', 'agua'], ['7', 'agua'], ['8', 'agua']],
+  royal: [['10', 'terra'], ['J', 'terra'], ['Q', 'terra'], ['K', 'terra'], ['A', 'terra']],
+};
+const pokerExample = id => `<span class="chips">${(POKER_EXAMPLE[id] || []).map(([r, rl]) => chip(r, rl)).join('')}</span>`;
 
 function toast(msg) {
   const t = $('#toast'); t.textContent = msg; t.hidden = false;
@@ -64,7 +80,7 @@ function minionCard(m, zone, extra = {}) {
   const c = CARD_BY_ID[m.id];
   const kws = (m.kw instanceof Set ? [...m.kw] : m.kw || []);
   const classes = ['card', zone, extra.sm ? 'sm' : '', m.golden ? 'golden' : '', kws.includes('shield') ? 'shield' : '', kws.includes('taunt') ? 'taunt' : '',
-    m.tribe === G.manilha && (zone === 'board' || zone === 'shop') ? 'manilha' : '', extra.cls || ''].join(' ');
+    m.tribe === G.manilha && zone !== 'disc' ? 'manilha' : '', extra.cls || ''].join(' ');
   const mult = m.golden ? 2 : 1;
   const baseA = c ? c.atk * mult : m.atk, baseH = c ? c.hp * mult : m.hp;
   const tier = '<div class="tier">' + '<i></i>'.repeat(m.tier || 1) + '</div>';
@@ -72,7 +88,7 @@ function minionCard(m, zone, extra = {}) {
   const sv = SELL_VALUE_BY_TIER[m.tier] + (m.golden ? 1 : 0);
   let acts = '';
   if (zone === 'hand') acts = `<div class="acts"><button data-act="play" data-uid="${m.uid}">Jogar</button><button class="b-sell" data-act="sell" data-uid="${m.uid}">Vender +${sv}</button><button class="b-burn" data-act="burn" data-uid="${m.uid}">Queimar +${m.golden ? 3 : 1} Éter</button></div>`;
-  if (zone === 'board' && !UI.targeting) acts = `<div class="acts"><button class="b-sell" data-act="sell" data-uid="${m.uid}">Vender +${sv}</button><button class="b-burn" data-act="burn" data-uid="${m.uid}">Queimar +${m.golden ? 3 : 1} Éter</button></div>`;
+  if (zone === 'board' && !UI.targeting) acts = `<div class="acts"><div class="mv"><button data-act="left" data-uid="${m.uid}" title="Mover para a esquerda">◀</button><button data-act="right" data-uid="${m.uid}" title="Mover para a direita">▶</button></div><button class="b-sell" data-act="sell" data-uid="${m.uid}">Vender +${sv}</button><button class="b-burn" data-act="burn" data-uid="${m.uid}">Queimar +${m.golden ? 3 : 1} Éter</button></div>`;
   const dmg = extra.dmg ? `<div class="dmg">-${extra.dmg}</div>` : '';
   const draggable = (zone === 'board' || zone === 'hand') ? 'draggable="true"' : '';
   const act = extra.act ? `data-act="${extra.act}"` : '';
@@ -82,8 +98,9 @@ function minionCard(m, zone, extra = {}) {
     <div class="shine"></div>${tier}<div class="rl">${rIcon(m.realm)}</div>
     ${c && c.dividend ? '<div class="div" title="Dividendos">+$</div>' : ''}
     <div class="kw">${kwIcons}</div>
-    <div class="nm">${esc(m.name)}</div><div class="tr">${m.tribe ? TRIBES[m.tribe].name : 'Ficha'}${m.golden ? ' ✦' : ''}</div>
-    <div class="atk ${m.atk > baseA ? 'buffed' : ''}">${m.atk}</div><div class="hp ${m.hp < baseH ? 'hurt' : m.hp > baseH ? 'buffed' : ''}">${m.hp}</div>${acts}${dmg}${extra.after || ''}</div>`;
+    ${m.tribe === G.manilha && zone !== 'disc' ? '<div class="flame"></div>' : ''}
+    ${m.tribe ? `<div class="rk">${rankLabel(m.tribe)}</div>` : ''}<div class="nm">${esc(m.name)}${m.golden ? ' ✦' : ''}</div>
+    <div class="atk ${m.atk > baseA ? 'buffed' : ''}">${m.atk}</div><div class="hp ${m.hp < baseH ? 'hurt' : m.hp > baseH ? 'buffed' : ''}">${Math.max(0, m.hp)}</div>${acts}${dmg}${extra.after || ''}</div>`;
 }
 
 function shopCard(p, s) {
@@ -101,13 +118,13 @@ function shopCard(p, s) {
 function spellCard(p, item, zone) {
   if (item.mago) {
     return `<div class="card mago shop" style="--realm:var(--eter)" data-act="mago" data-mago="1" data-key="p${item.uid}" data-zone="spellshop" data-realm="eter">
-      <div class="shine"></div><div class="cost">${ICON.coin()}${MAGO_COST}</div><div class="nm">Mago</div><div class="tr">Grimório</div></div>`;
+      <div class="shine"></div><div class="cost">${ICON.coin()}${MAGO_COST}</div><div class="rk">✦</div><div class="nm">Mago</div></div>`;
   }
   const sp = SPELL_BY_ID[item.spell];
   const cost = zone === 'shop' ? `<div class="cost eth">${etherIcons(spellCost(p, sp.id))}</div>` : '';
   const act = zone === 'shop' ? 'spellbuy' : 'cast';
   return `<div class="card spell ${zone}" data-act="${act}" data-uid="${item.uid}" data-spell="${sp.id}" data-key="${zone === 'shop' ? 'p' : 'm'}${item.uid}" data-zone="${zone}" data-realm="eter" ${zone === 'hand' ? 'draggable="true"' : ''}>
-    <div class="shine"></div>${cost}<div class="sig">${ICON.sigil()}</div><div class="nm">${esc(sp.name)}</div><div class="tr">Feitiço</div></div>`;
+    <div class="shine"></div>${cost}<div class="sig">${ICON.sigil()}</div><div class="nm">${esc(sp.name)}</div></div>`;
 }
 const etherIcons = cost => Object.entries(cost).map(([r, n]) => `${n}<span style="display:inline-block;width:12px;height:12px">${rIcon(r)}</span>`).join(' ') || 'grátis';
 
@@ -129,7 +146,7 @@ function render() {
   app.innerHTML = `
   <div class="game">
     <header class="hud">
-      <img class="logo" src="assets/ui/logo.svg" alt="Elementarios">
+      <img class="logo" src="assets/ui/logo.svg" alt="Elementarios"><img class="logo-e" src="assets/ui/_E.webp" alt="Elementarios">
       <div class="res">
         <div class="round-plate"><small>RODADA</small><b>${G.round}</b></div>
         <div class="gem hp" id="hud-hp" title="Vida do Feiticeiro">${ICON.heart()}${p.hp}</div>
@@ -139,7 +156,7 @@ function render() {
       </div>
       <div class="hud-right">
         <button class="btn icon" data-act="livro" title="Livro da Partida">${ICON.book()}</button>
-        <button class="btn icon" data-act="grim" title="Grimório (G)">${ICON.grim()}</button>
+        <button class="btn icon ${UI.grim ? 'on' : ''}" data-act="grim" title="Grimório (G)">${ICON.grim()}</button>
         <button class="btn icon" data-act="sound" title="Som">${ICON.sound(!SFX.muted)}</button>
         <button class="btn icon" data-act="timer" title="Pausar o tempo">${ICON.pause(UI.timerOn)}</button>
         <div class="timer ${UI.timer <= 10 && UI.timerOn ? 'low' : ''}"><svg viewBox="0 0 46 46"><circle class="bg" cx="23" cy="23" r="20"/><circle class="fg" cx="23" cy="23" r="20" stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - frac)}"/></svg><span>${UI.timerOn ? UI.timer : '∞'}</span></div>
@@ -147,7 +164,7 @@ function render() {
       </div>
     </header>
     <div class="main ${UI.grim ? '' : 'nogrim'}">
-      <aside class="table">${opponentsHTML()}
+      <aside class="table"><div class="tbl">${opponentsHTML()}</div>
         <div class="relic-dock ${hero.kind === 'ativo' ? (canHero ? 'ready' : 'spent') : ''}" style="--rc:${realmVar(hero.realm)}" ${hero.kind === 'ativo' ? 'data-act="hero"' : ''} title="${esc(hero.relicName)}: ${esc(hero.text)}">
           <div class="relic r-${hero.relic}" id="relic">${RELIC[hero.relic](p.terraPlayed % 3)}</div>
           <div class="relic-t"><b>${esc(hero.relicName)}</b>${hero.kind === 'ativo' ? (p.heroUsed ? 'usada nesta rodada' : 'clique para usar · ' + hero.cost + ' ouro') : hero.kind === 'carregável' ? (p.terraPlayed % 3) + '/3 cargas' : 'efeito passivo'}</div>
@@ -190,7 +207,7 @@ function render() {
           <div class="portal burn" data-drop="burn">${ICON.burn()}Queimar<br>Éter</div>
         </div>
       </section>
-      <aside class="grim pane">${trackerHTML()}</aside>
+      ${UI.grim ? `<aside class="grim pane"><button class="grim-x" data-act="grim" title="Fechar">✕</button>${trackerHTML()}</aside>` : `<button class="grim-tab" data-act="grim" title="Abrir o Grimório (G)">${ICON.grim()}<span>Grimório</span></button>`}
     </div>
   </div>`;
 }
@@ -202,7 +219,7 @@ function opponentsHTML() {
     return `<div class="opp ${o.isHuman ? 'you' : ''} ${o.alive ? '' : 'dead'}">
       <div class="medal" style="--rc:${realmVar(hero.realm)}">${rIcon(hero.realm)}<span class="lv"><span>${o.tier}</span></span></div>
       <div><div class="nm">${esc(o.name)}</div><div class="meta">${o.alive ? (o.lastResult || 'aguardando') + (!o.isHuman ? ' · ' + o.board.length + ' cartas' : '') : o.placement + 'º lugar'}</div></div>
-      <span class="hpv">${o.alive ? o.hp : '✝'}</span>
+      <span class="hpv">${o.alive ? o.hp : '✝'}</span><span class="hpmini">${o.alive ? o.hp : '✝'}</span>
       <div class="bar"><i style="width:${Math.max(0, o.hp) / CONFIG.heroHp * 100}%"></i></div>
     </div>`;
   }).join('');
@@ -229,7 +246,11 @@ function stockHTML() {
   let html = `<div class="filters">${fb('ftier', 'meu', UI.fTier, 'Meu nível')}${fb('ftier', 'todos', UI.fTier, 'Todos')}
     <button class="${UI.onlyWish ? 'on' : ''}" data-act="fwish">★ Desejos</button></div>
     <div class="filters">${fb('frealm', null, UI.fRealm, 'Reinos')}${REALM_ORDER.map(r => fb('frealm', r, UI.fRealm, rIcon(r) + REALMS[r].name)).join('')}</div>
-    <div class="filters">${fb('ftribe', null, UI.fTribe, 'Tribos')}${Object.keys(TRIBES).map(t => fb('ftribe', t, UI.fTribe, TRIBES[t].name)).join('')}</div>`;
+    <div class="filters">${fb('ftribe', null, UI.fTribe, 'Todas as tribos')}</div>
+    <div class="fhead">Disponíveis na sua Taverna</div>
+    <div class="filters">${Object.keys(TRIBES).filter(t => TRIBES[t].tier <= p.tier).map(t => fb('ftribe', t, UI.fTribe, `<b class="rkb">${rankLabel(t)}</b>${TRIBES[t].name}`)).join('')}</div>
+    <div class="fhead">Bloqueadas · sobem com a Taverna</div>
+    <div class="filters locked">${Object.keys(TRIBES).filter(t => TRIBES[t].tier > p.tier).map(t => fb('ftribe', t, UI.fTribe, `<b class="rkb">${rankLabel(t)}</b>${TRIBES[t].name}<small>nv ${TRIBES[t].tier}</small>`)).join('') || '<span class="note">Nenhuma: Taverna no máximo.</span>'}</div>`;
   if (p.wishlist.size) html += `<div class="bonus on"><span>★ Ver um desejo na próxima renovação</span><b class="pct ${pctClass(wishAny)}">${pctText(wishAny)}</b></div>`;
   near.forEach(id => {
     const o = shopOdds(p, id);
@@ -263,11 +284,11 @@ function synergyHTML() {
   let html = `<div class="label">Formação na arena</div><div style="height:8px"></div>
     <div class="bonus on" style="flex-direction:column;align-items:flex-start"><span style="font:700 20px var(--display);color:var(--teal)">${ph.hand.name}</span>
     <span class="note" style="margin:0">${ph.hand.text}</span>
-    ${ph.cards.length ? `<span style="font-size:11px">${ph.cards.map(m => esc(m.name)).join(' · ')}</span>` : ''}</div>`;
+    ${ph.cards.length ? `<span class="chips">${ph.cards.map(chipOf).join('')}</span>` : ''}</div>`;
   const outs = pokerOuts([...p.board, ...p.hand.filter(m => !isSpell(m))]);
   if (outs.length) html += `<div class="note" style="margin:4px 0 0">Contando a mão também:</div>` + outs.map(o => `<div class="bonus"><span>${o}</span></div>`).join('');
-  html += `<div style="height:10px"></div><div class="label">Mãos de poker</div><p class="note" style="margin-top:4px">Valor = arquétipo (Ás a Rei) · naipe = reino. A melhor mão de 5 cartas da arena vale no início de cada combate. Sequência aceita Ás baixo (Ás-2-3-4-5) e alto (10-J-Q-K-Ás).</p>` +
-    [...POKER_HANDS].reverse().filter(h => h.rank > 0).map(h => `<div class="kv" style="${h.id === ph.hand.id ? 'color:var(--teal)' : ''}"><span><b>${h.name}</b></span><span class="note" style="margin:0;text-align:right;max-width:170px">${h.text}</span></div>`).join('');
+  html += `<div style="height:10px"></div><div class="label">Mãos de poker</div><p class="note" style="margin-top:4px">Valor = número da carta (A a K) · naipe = símbolo do reino. A melhor mão de 5 cartas da arena vale no início de cada combate. Sequência aceita Ás baixo (Ás-2-3-4-5) e alto (10-J-Q-K-Ás).</p>` +
+    [...POKER_HANDS].reverse().filter(h => h.rank > 0).map(h => `<div class="phand ${h.id === ph.hand.id ? 'on' : ''}"><div class="ph-top"><b>${h.name}</b>${pokerExample(h.id)}</div><span class="note">${h.text}</span></div>`).join('');
   html += `<div class="note">Flush ativa o poder do reino: ${REALM_ORDER.map(r => `${REALMS[r].name}, ${REALM_POWER[r]}`).join('; ')}.</div>`;
   html += `<div style="height:10px"></div><div class="label">Reações na arena</div><div style="height:8px"></div>`;
   const usedR = new Set(); let found = 0;
@@ -413,6 +434,7 @@ function playReplay(rep, onDone, fromLivro = false) {
   let i = 0, paused = false, done = false, t = null;
   const youKey = rep.you, oppKey = youKey === 'A' ? 'B' : 'A';
   const youName = youKey === 'A' ? rep.aName : rep.bName, oppName = youKey === 'A' ? rep.bName : rep.aName;
+  const phs = { A: evaluatePoker(rep.frames[0].A), B: evaluatePoker(rep.frames[0].B) };
 
   function frameHTML(f, final) {
     const hl = f.hl || {};
@@ -423,7 +445,9 @@ function playReplay(rep, onDone, fromLivro = false) {
       return minionCard({ ...m, uid: m.cuid }, 'combat', { cls });
     }).join('') || '<span class="note">—</span>';
     const res = rep.result === 'vitória' ? 'win' : rep.result === 'derrota' ? 'lose' : 'tie';
-    return `<div class="title">RODADA ${rep.round} · COMBATE</div>
+    const pk = (key, who) => { const ph = phs[key]; return `<div class="pk ${ph.hand.rank ? '' : 'none'}"><small>${who}</small><b>${ph.hand.name}</b>${ph.cards.length ? `<span class="chips">${ph.cards.map(chipOf).join('')}</span>` : ''}</div>`; };
+    return `<div class="pokerside">${pk(oppKey, esc(oppName))}${pk(youKey, 'Você')}</div>
+      <div class="title">RODADA ${rep.round} · COMBATE</div>
       <div class="side-name">${esc(oppName)}</div>
       <div class="crow far">${row(f[oppKey])}</div>
       <div class="mid"><div class="cnote">${final ? `<span class="banner ${res}">${rep.result.toUpperCase()}</span>${rep.dmg && rep.result !== 'empate' ? `<div class="note" style="font-size:14px;margin-top:8px">${rep.result === 'vitória' ? 'causou' : 'sofreu'} ${rep.dmg} de dano</div>` : ''}` : esc(f.note)}</div></div>
@@ -661,6 +685,12 @@ document.addEventListener('click', e => {
       return;
     }
     case 'cancel': UI.targeting = null; return render();
+    case 'left': case 'right': {
+      const i = p.board.findIndex(m => m.uid === uid);
+      const to = act === 'left' ? i - 1 : i + 1;
+      if (i < 0 || to < 0 || to >= p.board.length) return;
+      return doAction(() => ACTIONS.move(p, uid, to), '', { sound: 'click' });
+    }
     case 'fuse': {
       const opts = doAction(() => ACTIONS.fuse(p, el.dataset.id), 'Não deu para fundir', { kind: 'fuse', sound: 'triple' });
       FX.floatText(innerWidth / 2, innerHeight * 0.42, 'TRIPLA!', 'gold big');
@@ -768,3 +798,18 @@ if (new URLSearchParams(location.search).get('teste') === 'goblin') {
   render();
   toast('Teste: Sneack na arena. Clique em LUTAR');
 }
+
+// ───────────────────────────── toque (celular): 1º toque mostra as ações, 2º executa
+const isTouch = window.matchMedia('(hover: none)').matches;
+document.addEventListener('click', e => {
+  if (!isTouch) return;
+  const card = e.target.closest('.card');
+  if (!card || e.target.closest('button') || card.classList.contains('sel') || UI.targeting) {
+    if (!card) document.querySelectorAll('.card.sel').forEach(c => c.classList.remove('sel'));
+    return;
+  }
+  if (!card.querySelector('.acts') && card.dataset.zone !== 'shop') return;
+  e.stopPropagation(); e.preventDefault();
+  document.querySelectorAll('.card.sel').forEach(c => c.classList.remove('sel'));
+  card.classList.add('sel');
+}, true);
