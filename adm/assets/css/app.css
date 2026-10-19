@@ -1968,3 +1968,14 @@ body.nav-hidden .nav-reopen { background: var(--surface) !important; border-radi
 .mframe-empty { cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
 .mframe-empty:hover, .mframe-empty:focus-visible { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .mframe-img.over { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+/* moodboard em A4 deitado (Baixar A4) */
+.mood-print { width: 297mm; height: 210mm; padding: 10mm; display: flex; flex-direction: column; gap: 5mm; background: #fff; color: #111; font-family: var(--font); -webkit-print-color-adjust: exact; print-color-adjust: exact; break-after: page; }
+.mood-print header { display: flex; justify-content: space-between; align-items: baseline; font-size: 10pt; }
+.mood-print header strong { font-family: var(--font-title); font-size: 16pt; }
+.mood-print header span { color: #666; }
+.mp-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(6, 1fr); grid-auto-rows: 1fr; grid-auto-flow: dense; gap: 3mm; }
+.mp-cell { margin: 0; overflow: hidden; border-radius: 2mm; background: #f2f2f2; }
+.mp-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+div.mp-cell { background: transparent; }
+@media print { body.print-manual #print-root .mood-print { width: 100vw; height: 100vh; } }

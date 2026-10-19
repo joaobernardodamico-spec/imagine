@@ -22,17 +22,18 @@ const sizeOf = (m, i) => [m.w || SPAN[SHAPES[i % SHAPES.length]][0], m.h || SPAN
 export function moodPanel(p, edit) {
   const used = moodSlots(p.id);
   const last = used.size ? Math.max(...used.keys()) : -1;
-  const total = Math.max(MIN_FRAMES, last + 1 + (edit ? 4 : 0));
+  const total = used.size ? last + 1 : (edit ? MIN_FRAMES : 0);
   const frame = (i, inner, cls = '', attrs = '') =>
     `<div class="mframe ${cls === 'mframe-img' ? '' : SHAPES[i % SHAPES.length]} ${cls}" ${attrs.includes('style=') ? '' : `style="--tilt:${TILTS[i % TILTS.length]}deg"`} ${attrs}>${inner}</div>`;
   return `<section class="mood">
     <div class="mood-head">
       <div><div class="kicker">Quadro de referências</div><h2>Moodboard</h2>
         <p class="muted">Clique numa moldura vazia ou solte uma imagem nela. Arraste uma imagem sobre outra para trocar de lugar e puxe o canto para mudar o tamanho.</p></div>
-      ${edit ? `<div class="row gap-8 wrap">
+      ${`<div class="row gap-8 wrap">
+        ${used.size ? `<button class="btn btn-ghost" data-act="moodPdf">${icon('download', 16)} Baixar A4</button>` : ''}` + (edit ? `
         <button class="btn btn-ghost" data-act="moodUrl">${icon('link', 16)} Por link</button>
-        <label class="btn btn-primary">${icon('upload', 16)} Enviar imagens<input type="file" accept="image/*" multiple hidden data-change="moodFiles"></label>
-      </div>` : ''}
+        <label class="btn btn-primary">${icon('upload', 16)} Enviar imagens<input type="file" accept="image/*" multiple hidden data-change="moodFiles"></label>` : '') + `
+      </div>`}
     </div>
     <div class="mood-grid ${edit ? 'can-edit' : ''}" id="mood">
       ${Array.from({ length: total }, (_, i) => {
@@ -236,6 +237,30 @@ export const moodActions = {
       ],
       async onSubmit(v) { await store.update('moodboard', m.id, v); },
     });
+  },
+  async moodPdf(el, e, { id }) {
+    const p = store.find('projects', id);
+    const used = moodSlots(id);
+    const last = Math.max(...used.keys());
+    const cells = Array.from({ length: last + 1 }, (_, i) => {
+      const m = used.get(i);
+      if (!m) return '<div class="mp-cell"></div>';
+      const [w, h] = sizeOf(m, i);
+      return `<figure class="mp-cell" style="grid-column:span ${Math.min(w, 6)};grid-row:span ${h}"><img src="${esc(m.url)}" alt=""></figure>`;
+    }).join('');
+    const root = document.createElement('div');
+    root.id = 'print-root';
+    root.innerHTML = `<section class="mood-print"><header><strong>${esc(p.name)}</strong><span>Moodboard · IMAGINE Concept</span></header><div class="mp-grid">${cells}</div></section>`;
+    document.body.appendChild(root);
+    const page = document.createElement('style');
+    page.textContent = '@page { size: A4 landscape; margin: 0; }';
+    document.head.appendChild(page);
+    document.body.classList.add('print-manual');
+    await Promise.all([...root.querySelectorAll('img')].map(i => i.decode?.().catch(() => {})));
+    const done = () => { root.remove(); page.remove(); document.body.classList.remove('print-manual'); window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    window.print();
+    setTimeout(() => document.getElementById('print-root') && done(), 1500);
   },
   moodEdit(el) {
     const m = store.find('moodboard', el.dataset.id);
