@@ -28,7 +28,7 @@ export function moodPanel(p, edit) {
   return `<section class="mood">
     <div class="mood-head">
       <div><div class="kicker">Quadro de referências</div><h2>Moodboard</h2>
-        <p class="muted">Clique numa moldura vazia ou solte uma imagem nela. Arraste uma imagem sobre outra para trocar de lugar e puxe o canto para mudar o tamanho.</p></div>
+        <p class="muted">Clique numa imagem para ver em tela cheia. Arraste uma sobre a outra para trocar de lugar e puxe o canto para mudar o tamanho.</p></div>
       ${`<div class="row gap-8 wrap">
         ${used.size ? `<button class="btn btn-ghost" data-act="moodPdf">${icon('download', 16)} Baixar A4</button>` : ''}` + (edit ? `
         <button class="btn btn-ghost" data-act="moodUrl">${icon('link', 16)} Por link</button>
@@ -98,9 +98,52 @@ async function moveTo(pid, id, slot) {
   store.emit({});
 }
 
+// Visualizador: a imagem em tela cheia, com setas, teclado e deslizar no celular
+export function openViewer(pid, id) {
+  const list = [...moodSlots(pid).entries()].sort((a, b) => a[0] - b[0]).map(([, m]) => m);
+  let i = Math.max(0, list.findIndex(m => m.id === id));
+  document.getElementById('mood-viewer')?.remove();
+  const box = document.createElement('div');
+  box.id = 'mood-viewer'; box.className = 'mviewer'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+  box.innerHTML = `<button class="mv-x" aria-label="Fechar">${icon('x', 22)}</button>
+    <button class="mv-nav mv-prev" aria-label="Anterior">${icon('chevL', 26)}</button>
+    <figure class="mv-fig"><img alt=""><figcaption><strong></strong><span class="mv-count"></span><a class="mv-src" target="_blank" rel="noopener">${icon('link', 14)} Abrir origem</a></figcaption></figure>
+    <button class="mv-nav mv-next" aria-label="Próxima">${icon('chevR', 26)}</button>`;
+  document.body.appendChild(box);
+  const img = box.querySelector('img');
+  const show = () => {
+    const m = list[i];
+    img.src = m.url; img.alt = m.title || 'Referência';
+    box.querySelector('strong').textContent = m.title || 'Sem nome';
+    box.querySelector('.mv-count').textContent = `${i + 1} de ${list.length}`;
+    const src = box.querySelector('.mv-src');
+    src.hidden = !/^https?:/i.test(m.source || ''); src.href = src.hidden ? '#' : safeUrl(m.source);
+    box.querySelectorAll('.mv-nav').forEach(b => { b.hidden = list.length < 2; });
+  };
+  const go = d => { i = (i + d + list.length) % list.length; show(); };
+  const close = () => { box.remove(); document.removeEventListener('keydown', key); document.body.style.overflow = ''; };
+  const key = e => { if (e.key === 'Escape') close(); if (e.key === 'ArrowRight') go(1); if (e.key === 'ArrowLeft') go(-1); };
+  box.querySelector('.mv-x').onclick = close;
+  box.querySelector('.mv-prev').onclick = e => { e.stopPropagation(); go(-1); };
+  box.querySelector('.mv-next').onclick = e => { e.stopPropagation(); go(1); };
+  box.addEventListener('click', e => { if (e.target === box || e.target.classList.contains('mv-fig')) close(); });
+  let sx = null;
+  box.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
+  box.addEventListener('touchend', e => { if (sx === null) return; const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1); sx = null; });
+  document.addEventListener('keydown', key);
+  document.body.style.overflow = 'hidden';
+  show();
+}
+
 export function wireMood(root, pid) {
-  const grid = root.querySelector('#mood.can-edit');
-  if (!grid) return;
+  const all = root.querySelector('#mood');
+  if (!all) return;
+  // Quem só visualiza: clique abre a imagem em tela cheia
+  if (!all.classList.contains('can-edit')) {
+    all.querySelectorAll('.mframe-img').forEach(f => f.addEventListener('click', e => { if (!e.target.closest('button, a')) openViewer(pid, f.dataset.id); }));
+    return;
+  }
+  const grid = all;
   grid.querySelectorAll('.mresize').forEach(h => h.addEventListener('pointerdown', e => {
     e.preventDefault(); e.stopPropagation();
     const f = h.closest('.mframe');
@@ -173,7 +216,7 @@ export function wireMood(root, pid) {
         document.removeEventListener('pointermove', move);
         document.removeEventListener('pointerup', up);
         document.removeEventListener('pointercancel', up);
-        if (!ghost) return;
+        if (!ghost) return openViewer(pid, f.dataset.id);
         ghost.remove(); f.classList.remove('dragging'); target?.classList.remove('over');
         if (target) await moveTo(pid, f.dataset.id, +target.dataset.slot);
       };

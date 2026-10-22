@@ -53,7 +53,7 @@ export default {
   after(root, { id, tab, sub }) {
     const p = store.find('projects', id);
     if (!p) return;
-    if ((tab === 'moodboard' || tab === 'rascunho') && canEditProject(p)) wireMood(root, id);
+    if (tab === 'moodboard' || tab === 'rascunho') wireMood(root, id);
     if (tab === 'marca') wireBrandbook(root, p, sub);
   },
 
