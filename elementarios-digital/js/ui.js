@@ -480,6 +480,14 @@ function playReplay(rep, onDone, fromLivro = false) {
   const youKey = rep.you, oppKey = youKey === 'A' ? 'B' : 'A';
   const youName = youKey === 'A' ? rep.aName : rep.bName, oppName = youKey === 'A' ? rep.bName : rep.aName;
   const phs = { A: evaluatePoker(rep.frames[0].A), B: evaluatePoker(rep.frames[0].B) };
+  if (!rep.odds) {
+    const N = 300, res = { A: 0, B: 0, tie: 0 };
+    const A0 = rep.frames[0].A, B0 = rep.frames[0].B;
+    for (let k = 0; k < N; k++) res[simulateCombat(A0, B0, { seed: 7919 * (k + 1) }).winner]++;
+    rep.odds = { win: res[youKey] / N, tie: res.tie / N, lose: res[oppKey] / N };
+  }
+  const sum = arr => arr.reduce((a, m) => ({ atk: a.atk + Math.max(0, m.atk), hp: a.hp + Math.max(0, m.hp), n: a.n + 1 }), { atk: 0, hp: 0, n: 0 });
+  const pct = v => Math.round(v * 100) + '%';
 
   function frameHTML(f, final) {
     const hl = f.hl || {};
@@ -490,8 +498,27 @@ function playReplay(rep, onDone, fromLivro = false) {
       return minionCard({ ...m, uid: m.cuid }, 'combat', { cls });
     }).join('') || '<span class="note">—</span>';
     const res = rep.result === 'vitória' ? 'win' : rep.result === 'derrota' ? 'lose' : 'tie';
-    const pk = (key, who) => { const ph = phs[key]; return `<div class="pk ${ph.hand.rank ? '' : 'none'}"><small>${who}</small><b>${ph.hand.name}</b>${ph.cards.length ? `<span class="chips">${ph.cards.map(chipOf).join('')}</span>` : ''}</div>`; };
-    return `<div class="pokerside">${pk(oppKey, esc(oppName))}${pk(youKey, 'Você')}</div>
+    const lit = hl.poker ? hl.side : null;
+    const pk = (key, who, side) => {
+      const ph = phs[key];
+      const bars = '<i></i>'.repeat(ph.hand.rank) + '<i class="off"></i>'.repeat(9 - ph.hand.rank);
+      return `<div class="pk pk-${side} ${ph.hand.rank ? 'r' + ph.hand.rank : 'none'} ${lit === key ? 'lit' : ''}">
+        <small>${who}</small><b>${ph.hand.name}</b><span class="pk-bars" title="força da mão">${bars}</span>
+        ${ph.cards.length ? `<span class="chips">${ph.cards.map(chipOf).join('')}</span>` : ''}
+        ${ph.hand.rank ? `<span class="pk-txt">${esc(ph.hand.text)}</span>` : '<span class="pk-txt">Sem combinação: nenhum bônus.</span>'}</div>`;
+    };
+    const me = sum(f[youKey]), foe = sum(f[oppKey]);
+    const powMe = me.atk + me.hp, powFoe = foe.atk + foe.hp, share = powMe + powFoe ? powMe / (powMe + powFoe) : 0.5;
+    const o = rep.odds;
+    const score = `<div class="score">
+      <div class="sc-side me"><span class="sc-n">${me.n}<small>cartas</small></span><span class="sc-a" title="Ataque total">${me.atk}</span><span class="sc-h" title="Vida total">${me.hp}</span></div>
+      <div class="sc-mid">
+        <div class="sc-bar" title="Força na mesa (ataque + vida)"><i style="width:${(share * 100).toFixed(1)}%"></i><b style="left:${(share * 100).toFixed(1)}%"></b></div>
+        <div class="sc-odds" title="Chance calculada antes da luta (300 simulações)"><span class="w">${pct(o.win)} vitória</span><span class="t">${pct(o.tie)} empate</span><span class="l">${pct(o.lose)} derrota</span></div>
+      </div>
+      <div class="sc-side foe"><span class="sc-h" title="Vida total">${foe.hp}</span><span class="sc-a" title="Ataque total">${foe.atk}</span><span class="sc-n">${foe.n}<small>cartas</small></span></div>
+    </div>`;
+    return `${score}${pk(youKey, 'Você', 'me')}${pk(oppKey, esc(oppName), 'foe')}
       <div class="title">RODADA ${rep.round} · COMBATE</div>
       <div class="side-name">${esc(oppName)}</div>
       <div class="crow far">${row(f[oppKey])}</div>

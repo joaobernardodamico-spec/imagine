@@ -341,7 +341,7 @@ body.dragging .portal { border-color: var(--pc); color: var(--ink); animation: p
 /* ───────── combate */
 .combat-view { position: fixed; inset: 0; z-index: 30; display: grid; grid-template-rows: auto auto 1fr auto 1fr auto auto; justify-items: center; align-items: center; padding: 16px; gap: 4px;
   background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(2,10,9,.1), rgba(1,6,5,.7) 85%); animation: fadein .35s; }
-body.in-combat #app, body.in-combat #tip { visibility: hidden; }
+body.in-combat #app { visibility: hidden; }
 .combat-view .crow { background: radial-gradient(ellipse at 50% 60%, rgba(2,10,9,.55), transparent 72%) !important; }
 .combat-view .cnote, .combat-view .side-name, .combat-view .title { text-shadow: 0 2px 8px #000, 0 0 14px rgba(67,240,208,.4); }
 @keyframes fadein { from { opacity: 0; } }
@@ -767,3 +767,65 @@ body.pdrag:is(.pd-shop, .pd-spellshop, .pd-hand, .pd-board) .arena { border-colo
 body.pdrag[data-pdz="board"] .arena { border-color: var(--teal); box-shadow: inset 0 0 80px rgba(67,240,208,.3), 0 0 30px rgba(67,240,208,.25); }
 body.pdrag[data-pdz="hand"] .hand { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 8px; }
 .card.pd-target { box-shadow: 0 0 0 3px var(--eter), 0 0 28px var(--eter) !important; transform: translateY(-8px) scale(1.05) !important; }
+
+/* ═════════════════════ combate: combinações em destaque ═════════════════════ */
+.combat-view .pk { position: absolute; top: 50%; transform: translateY(-50%); width: 250px; z-index: 3; padding: 16px 16px 14px; border-radius: 8px;
+  background: linear-gradient(180deg, rgba(4,20,18,.94), rgba(2,8,7,.94)); border: 1px solid var(--line-2); box-shadow: 0 20px 50px rgba(0,0,0,.6); }
+.combat-view .pk-me { left: 22px; border-color: var(--teal); box-shadow: 0 0 34px -8px var(--teal), 0 20px 50px rgba(0,0,0,.6); }
+.combat-view .pk-foe { right: 22px; text-align: right; border-color: rgba(255,84,104,.6); box-shadow: 0 0 34px -10px #ff5468, 0 20px 50px rgba(0,0,0,.6); }
+.combat-view .pk small { font-size: 11px; letter-spacing: .3em; }
+.combat-view .pk b { font: 800 30px/1.05 var(--display); margin: 6px 0 8px; letter-spacing: .02em; }
+.combat-view .pk-foe b { color: #ff9aa6; text-shadow: 0 0 16px rgba(255,84,104,.6); }
+.combat-view .pk-me b { color: #8ffbe7; text-shadow: 0 0 18px rgba(67,240,208,.7); }
+.pk-bars { display: flex; gap: 3px; margin-bottom: 10px; }
+.pk-foe .pk-bars { justify-content: flex-end; }
+.pk-bars i { flex: 1; height: 6px; border-radius: 2px; background: var(--teal); box-shadow: 0 0 6px var(--teal); }
+.pk-foe .pk-bars i { background: #ff5468; box-shadow: 0 0 6px #ff5468; }
+.pk-bars i.off { background: rgba(255,255,255,.08); box-shadow: none; }
+.combat-view .pk .chips { gap: 5px; }
+.pk-foe .chips { justify-content: flex-end; }
+.combat-view .pk .chip { width: 38px; height: 54px; border-width: 2px; }
+.combat-view .pk .chip b { font-size: 20px; margin: 0; color: #fff; text-shadow: 0 0 8px var(--realm); }
+.combat-view .pk .chip .sym { width: 18px; height: 18px; }
+.pk-txt { display: block; margin-top: 10px; font-size: 11px; line-height: 1.45; color: var(--mute); }
+.combat-view .pk.none { opacity: .6; } .combat-view .pk.none b { font-size: 22px; color: var(--mute) !important; text-shadow: none !important; }
+.combat-view .pk.r6 b, .combat-view .pk.r7 b, .combat-view .pk.r8 b, .combat-view .pk.r9 b { animation: pkglow 1.6s ease-in-out infinite; }
+@keyframes pkglow { 50% { filter: brightness(1.4); } }
+.combat-view .pk.lit { animation: pklit .9s ease-out; }
+@keyframes pklit { 0% { transform: translateY(-50%) scale(1); } 30% { transform: translateY(-50%) scale(1.12); filter: brightness(1.8); } 100% { transform: translateY(-50%) scale(1); } }
+@media (max-width: 1100px) { .combat-view .pk { width: 190px; padding: 12px; } .combat-view .pk b { font-size: 22px; } .combat-view .pk .chip { width: 28px; height: 40px; } .combat-view .pk .chip b { font-size: 14px; } .pk-txt { display: none; } }
+@media (max-width: 760px) {
+  .combat-view { padding-top: 96px; }
+  .combat-view .pk { top: 8px; transform: none; width: calc(50% - 12px); padding: 8px; }
+  .combat-view .pk-me { left: 6px; } .combat-view .pk-foe { right: 6px; }
+  .combat-view .pk b { font-size: 15px; margin: 3px 0 5px; } .pk-bars { margin-bottom: 5px; } .pk-bars i { height: 4px; }
+  .combat-view .pk .chip { width: 20px; height: 28px; border-width: 1px; } .combat-view .pk .chip b { font-size: 10px; } .combat-view .pk .chip .sym { width: 10px; height: 10px; }
+  .combat-view .pk.lit { animation: none; }
+}
+/* dica da carta também no combate */
+body.in-combat .tip { z-index: 95; }
+
+/* ═════════════════════ placar de forças no combate ═════════════════════ */
+.score { position: absolute; top: 44px; left: 50%; transform: translateX(-50%); z-index: 4; width: min(640px, 70vw); display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center;
+  padding: 10px 16px; border-radius: 8px; background: rgba(2,8,7,.9); border: 1px solid var(--line-2); box-shadow: 0 14px 40px rgba(0,0,0,.6); }
+.sc-side { display: flex; align-items: center; gap: 10px; }
+.sc-a, .sc-h { position: relative; width: 44px; height: 44px; display: grid; place-items: center; font: 800 18px var(--display); color: #fff; text-shadow: 0 1px 2px #000; }
+.sc-a::before, .sc-h::before { content: ''; position: absolute; inset: 4px; z-index: -1; transform: rotate(45deg); border-radius: 5px; }
+.sc-a::before { background: linear-gradient(135deg, #ffd56b, #c4800f); box-shadow: 0 0 12px rgba(241,195,90,.6); }
+.sc-h::before { background: linear-gradient(135deg, #ff7f8c, #b31c33); box-shadow: 0 0 12px rgba(255,84,104,.6); }
+.sc-n { font: 800 20px var(--display); color: var(--ink); text-align: center; line-height: 1; } .sc-n small { display: block; font: 600 8px Sora; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
+.sc-mid { display: flex; flex-direction: column; gap: 7px; }
+.sc-bar { position: relative; height: 10px; border-radius: 6px; background: linear-gradient(90deg, #ff5468, #8a1a2a); overflow: visible; }
+.sc-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px 0 0 6px; background: linear-gradient(90deg, #1fc2a7, #43f0d0); box-shadow: 0 0 10px #43f0d0; transition: width .45s ease; }
+.sc-bar b { position: absolute; top: 50%; width: 4px; height: 18px; transform: translate(-50%, -50%); background: #fff; border-radius: 2px; box-shadow: 0 0 8px #fff; transition: left .45s ease; }
+.sc-odds { display: flex; justify-content: space-between; font: 700 11px Sora; letter-spacing: .03em; }
+.sc-odds .w { color: #8ffbe7; } .sc-odds .t { color: var(--mute); } .sc-odds .l { color: #ff9aa6; }
+@media (max-width: 760px) {
+  .score { top: 4px; width: calc(100% - 12px); padding: 6px 8px; gap: 8px; }
+  .sc-a, .sc-h { width: 32px; height: 32px; font-size: 13px; } .sc-n { font-size: 14px; } .sc-odds { font-size: 9px; }
+  .combat-view { padding-top: 64px; }
+  .combat-view .pk { top: 62px; }
+  .combat-view .crow.far { margin-top: 90px; }
+}
+
+@media (min-width: 761px) { .combat-view { padding-top: 96px; } .score { top: 14px; } .combat-view .title { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: 10px; opacity: .7; } }
