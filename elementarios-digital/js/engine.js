@@ -611,3 +611,30 @@ function resolveCombats() {
   if (!G.human.alive || alivePlayers().length <= 1) G.over = true;
   return results;
 }
+
+// Para cada mão, quantas cartas faltam a partir das cartas dadas (arena + mão).
+function pokerProgress(cards) {
+  const real = cards.filter(m => m.tribe && TRIBES[m.tribe]);
+  const rk = m => TRIBES[m.tribe].rank;
+  const groups = {}, suits = {}, have = new Set();
+  real.forEach(m => { groups[rk(m)] = (groups[rk(m)] || 0) + 1; suits[m.realm] = (suits[m.realm] || 0) + 1; have.add(rk(m) + '|' + m.realm); if (rk(m) === 1) have.add('14|' + m.realm); });
+  const g = Object.values(groups).sort((a, b) => b - a).concat([0, 0]);
+  const ranks = new Set(Object.keys(groups).map(Number)); if (ranks.has(1)) ranks.add(14);
+  const need = (n, x) => Math.max(0, n - x);
+  let seq = 5, sf = 5, royal = 5;
+  for (let top = 14; top >= 5; top--) {
+    let miss = 0; for (let r = top; r > top - 5; r--) if (!ranks.has(r)) miss++;
+    seq = Math.min(seq, miss);
+    for (const s of REALM_ORDER) {
+      let m2 = 0; for (let r = top; r > top - 5; r--) if (!have.has(r + '|' + s)) m2++;
+      sf = Math.min(sf, m2);
+      if (top === 14) royal = Math.min(royal, m2);
+    }
+  }
+  return {
+    par: need(2, g[0]), doispares: need(2, g[0]) + need(2, g[1]), trinca: need(3, g[0]), sequencia: seq,
+    flush: need(5, Math.max(0, ...Object.values(suits))),
+    full: Math.min(need(3, g[0]) + need(2, g[1]), need(3, g[1]) + need(2, g[0])),
+    quadra: need(4, g[0]), sflush: sf, royal,
+  };
+}

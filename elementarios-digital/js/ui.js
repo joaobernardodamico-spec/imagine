@@ -90,7 +90,7 @@ function minionCard(m, zone, extra = {}) {
   if (zone === 'hand') acts = `<div class="acts"><button data-act="play" data-uid="${m.uid}">Jogar</button><button class="b-sell" data-act="sell" data-uid="${m.uid}">Vender +${sv}</button><button class="b-burn" data-act="burn" data-uid="${m.uid}">Queimar +${m.golden ? 3 : 1} Éter</button></div>`;
   if (zone === 'board' && !UI.targeting) acts = `<div class="acts"><div class="mv"><button data-act="left" data-uid="${m.uid}" title="Mover para a esquerda">◀</button><button data-act="right" data-uid="${m.uid}" title="Mover para a direita">▶</button></div><button class="b-sell" data-act="sell" data-uid="${m.uid}">Vender +${sv}</button><button class="b-burn" data-act="burn" data-uid="${m.uid}">Queimar +${m.golden ? 3 : 1} Éter</button></div>`;
   const dmg = extra.dmg ? `<div class="dmg">-${extra.dmg}</div>` : '';
-  const draggable = (zone === 'board' || zone === 'hand') ? 'draggable="true"' : '';
+  const draggable = '';
   const act = extra.act ? `data-act="${extra.act}"` : '';
   const key = extra.key || (zone === 'shop' ? 's' : zone === 'combat' ? 'c' : 'm') + m.uid;
   return `<div class="${classes}" style="--realm:${realmVar(m.realm)};background-image:url('${c ? c.art : ''}')" data-card="${m.id || ''}" data-golden="${m.golden ? 1 : 0}"
@@ -123,7 +123,7 @@ function spellCard(p, item, zone) {
   const sp = SPELL_BY_ID[item.spell];
   const cost = zone === 'shop' ? `<div class="cost eth">${etherIcons(spellCost(p, sp.id))}</div>` : '';
   const act = zone === 'shop' ? 'spellbuy' : 'cast';
-  return `<div class="card spell ${zone}" data-act="${act}" data-uid="${item.uid}" data-spell="${sp.id}" data-key="${zone === 'shop' ? 'p' : 'm'}${item.uid}" data-zone="${zone}" data-realm="eter" ${zone === 'hand' ? 'draggable="true"' : ''}>
+  return `<div class="card spell ${zone}" data-act="${act}" data-uid="${item.uid}" data-spell="${sp.id}" data-key="${zone === 'shop' ? 'p' : 'm'}${item.uid}" data-zone="${zone}" data-realm="eter" >
     <div class="shine"></div>${cost}<div class="sig">${ICON.sigil()}</div><div class="nm">${esc(sp.name)}</div></div>`;
 }
 const etherIcons = cost => Object.entries(cost).map(([r, n]) => `${n}<span style="display:inline-block;width:12px;height:12px">${rIcon(r)}</span>`).join(' ') || 'grátis';
@@ -207,6 +207,7 @@ function render() {
           <div class="portal burn" data-drop="burn">${ICON.burn()}Queimar<br>Éter</div>
         </div>
       </section>
+      <aside class="comp pane">${compendiumHTML()}</aside>
       ${UI.grim ? `<aside class="grim pane"><button class="grim-x" data-act="grim" title="Fechar">✕</button>${trackerHTML()}</aside>` : `<button class="grim-tab" data-act="grim" title="Abrir o Grimório (G)">${ICON.grim()}<span>Grimório</span></button>`}
     </div>
   </div>`;
@@ -223,6 +224,49 @@ function opponentsHTML() {
       <div class="bar"><i style="width:${Math.max(0, o.hp) / CONFIG.heroHp * 100}%"></i></div>
     </div>`;
   }).join('');
+}
+
+// ───────────────────────────── Compêndio (HUD fixo: mãos + todas as cartas por nível)
+function compendiumHTML() {
+  const p = G.human;
+  const mine = [...p.board, ...p.hand].filter(m => !isSpell(m));
+  const onBoard = evaluatePoker(p.board);
+  const best = evaluatePoker(mine);
+  const prog = pokerProgress(mine);
+  const hands = [...POKER_HANDS].reverse().filter(h => h.rank > 0);
+  let html = `<div class="c-sec">Mãos de poker</div><div class="c-hands">` + hands.map(h => {
+    const miss = prog[h.id];
+    const state = onBoard.hand.id === h.id ? 'now' : miss === 0 ? 'ready' : miss === 1 ? 'near' : miss === 2 ? 'mid' : 'far';
+    const tag = state === 'now' ? 'NA ARENA' : state === 'ready' ? 'NA MÃO' : 'falta' + (miss > 1 ? 'm ' : ' ') + miss;
+    return `<div class="c-hand ${state}" title="${esc(h.text)}"><span class="c-hn">${h.name}</span>${pokerExample(h.id)}<span class="c-tag">${tag}</span></div>`;
+  }).join('') + '</div>';
+
+  // quais cartas melhoram a sua melhor mão
+  const improves = {};
+  CARDS.forEach(c => {
+    if (c.tier > p.tier) return;
+    const r = evaluatePoker([...mine, { tribe: c.tribe, realm: c.realm }]).hand;
+    if (r.rank > best.hand.rank) improves[c.id] = r.name;
+  });
+  // seletor de nível (igual ao tracker): mostra um nível por vez, agrupado por tribo
+  const tierSel = UI.compTier || p.tier;
+  html += `<div class="c-sec">Lacaios por nível <small>${Object.keys(improves).length} melhoram sua mão</small></div>
+    <div class="c-tiers">${[1, 2, 3, 4, 5, 6, 7].map(t => `<button class="c-tbtn ${t === tierSel ? 'on' : ''} ${t > p.tier ? 'lk' : ''}" data-act="ctier" data-t="${t}" title="Nível ${t}${t > p.tier ? ' (bloqueado)' : ''}">${t}</button>`).join('')}</div>`;
+  const locked = tierSel > p.tier;
+  const tribes = Object.keys(TRIBES).filter(t => TRIBES[t].tier === tierSel);
+  html += `<div class="c-list ${locked ? 'locked' : ''}">` + tribes.map(tr => {
+    const cards = CARDS.filter(c => c.tribe === tr).sort((x, y) => REALM_ORDER.indexOf(x.realm) - REALM_ORDER.indexOf(y.realm));
+    return `<div class="c-tribe"><b>${rankLabel(tr)}</b>${TRIBES[tr].name}${tr === G.manilha ? '<em>Manilha</em>' : ''}</div>` + cards.map(c => {
+      const left = G.pool[c.id], total = COPIES_BY_TIER[c.tier];
+      const own = mine.filter(m => m.id === c.id).length;
+      return `<div class="c-card ${improves[c.id] ? 'up' : ''} ${c.tribe === G.manilha ? 'man' : ''} ${left === 0 ? 'out' : ''}" style="--realm:var(--${c.realm})" data-card="${c.id}" data-act="wish" data-id="${c.id}">
+        <span class="c-face" style="background-image:url('${c.art}')"></span>
+        ${rIcon(c.realm)}<span class="c-nm">${esc(c.name)}${p.wishlist.has(c.id) ? ' <i class="c-star">★</i>' : ''}</span>
+        ${improves[c.id] ? `<span class="c-up">↑ ${improves[c.id]}</span>` : own ? `<span class="c-own">×${own}</span>` : ''}
+        <span class="c-left" title="${left} de ${total} no estoque">${left}</span></div>`;
+    }).join('');
+  }).join('') + '</div>';
+  return html;
 }
 
 // ───────────────────────────── Grimório (Deck Tracker)
@@ -373,6 +417,7 @@ function beginGame(heroId) {
 }
 
 function nextRound() {
+  UI.compTier = null;
   startRound();
   for (const b of alivePlayers()) if (!b.isHuman) botTurn(b);
   UI.phase = 'recruit';
@@ -612,6 +657,7 @@ document.addEventListener('click', e => {
     case 'end': SFX.click(); return endHumanTurn();
     case 'timer': UI.timerOn = !UI.timerOn; SFX.click(); return render();
     case 'grim': UI.grim = !UI.grim; SFX.click(); return render();
+    case 'ctier': UI.compTier = +el.dataset.t; SFX.click(); return render();
     case 'tab': UI.tab = el.dataset.tab; SFX.click(); return render();
     case 'ftier': UI.fTier = el.dataset.val; return render();
     case 'frealm': UI.fRealm = el.dataset.val || null; return render();
@@ -710,54 +756,146 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Escape' && UI.targeting) { UI.targeting = null; render(); }
 });
 
-// ───────────────────────────── arrastar e soltar
-document.addEventListener('dragstart', e => {
-  const c = e.target.closest('.card[draggable="true"]');
-  if (!c) return;
-  UI.drag = { uid: +c.dataset.uid, zone: c.dataset.zone };
-  c.classList.add('dragging');
-  document.body.classList.add('dragging');
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', c.dataset.uid);
-  $('#tip').hidden = true;
-  SFX.click();
+// ───────────────────────────── segurar e arrastar (mouse e toque)
+// loja ↓ compra · loja ↑ queima · sua carta → balcão vende · sua carta ↑ queima · mão → arena joga · arena ↔ reordena
+const PD = { st: null, justDragged: false };
+const rectOf = sel => { const e = document.querySelector(sel); return e ? e.getBoundingClientRect() : null; };
+const inside = (r, x, y) => r && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+
+function dragZone(x, y, src) {
+  const counter = rectOf('.counter'), arena = rectOf('.arena'), hand = rectOf('.hand');
+  if (counter && y < counter.top - 4) return 'burn';
+  if (inside(counter, x, y)) return src === 'shop' || src === 'spellshop' ? null : 'sell';
+  if (inside(arena, x, y)) return 'board';
+  if (inside(hand, x, y)) return 'hand';
+  if (counter && y > counter.bottom) return arena && y < arena.bottom ? 'board' : 'hand';
+  return null;
+}
+const ZONE_TEXT = {
+  shop: { board: 'Comprar e jogar', hand: 'Comprar', burn: 'Queimar · 1 ouro → Éter' },
+  spellshop: { board: 'Comprar', hand: 'Comprar' },
+  hand: { board: 'Jogar', sell: 'Vender', burn: 'Queimar → Éter' },
+  board: { board: 'Mover', sell: 'Vender', burn: 'Queimar → Éter', hand: '' },
+  spell: { board: 'Conjurar', burn: 'Queimar → Éter' },
+};
+
+function boardIndexAt(x) {
+  const p = G.human;
+  const cards = [...document.querySelectorAll('.arena .card[data-zone="board"]')];
+  let idx = p.board.length;
+  for (let i = 0; i < cards.length; i++) { const r = cards[i].getBoundingClientRect(); if (x < r.left + r.width / 2) { idx = i; break; } }
+  return idx;
+}
+
+document.addEventListener('pointerdown', e => {
+  if (UI.phase !== 'recruit' || e.button > 0 || UI.targeting) return;
+  if (e.target.closest('button')) return;
+  const card = e.target.closest('.card');
+  if (!card || !card.closest('.counter, .arena, .hand')) return;
+  let src = card.dataset.zone;
+  if (card.classList.contains('spell') && src === 'hand') src = 'spell';
+  if (card.dataset.mago) src = 'spellshop';
+  PD.st = { card, src, uid: +card.dataset.uid, x0: e.clientX, y0: e.clientY, on: false, ghost: null, id: e.pointerId };
 });
-document.addEventListener('dragend', () => { UI.drag = null; document.body.classList.remove('dragging'); document.querySelectorAll('.over,.drop-ok,.dragging').forEach(x => x.classList.remove('over', 'drop-ok', 'dragging')); });
-document.addEventListener('dragover', e => {
-  if (!UI.drag) return;
-  const z = e.target.closest('[data-drop]');
-  if (!z) return;
-  e.preventDefault();
-  document.querySelectorAll('.over,.drop-ok').forEach(x => x.classList.remove('over', 'drop-ok'));
-  z.classList.add(z.classList.contains('portal') ? 'over' : 'drop-ok');
-});
-document.addEventListener('drop', e => {
-  if (!UI.drag || UI.phase !== 'recruit') return;
-  const z = e.target.closest('[data-drop]');
-  if (!z) return;
-  e.preventDefault();
-  document.body.classList.remove('dragging');
-  const p = G.human, { uid, zone } = UI.drag, kind = z.dataset.drop;
-  UI.drag = null;
-  if (kind === 'sell') return doAction(() => ACTIONS.sell(p, uid), 'Não deu para vender', { kind: 'sell', sound: 'sell' });
-  if (kind === 'burn') return doAction(() => ACTIONS.burn(p, uid), 'Não deu para queimar', { kind: 'burn', sound: 'burn' });
-  if (kind === 'board') {
-    const overCard = e.target.closest('.card[data-zone="board"]');
-    let idx = p.board.length;
-    if (overCard) {
-      idx = p.board.findIndex(m => m.uid === +overCard.dataset.uid);
-      const rect = overCard.getBoundingClientRect();
-      if (e.clientX > rect.left + rect.width / 2) idx++;
-    }
-    if (zone === 'hand') return doAction(() => ACTIONS.play(p, uid, idx), 'Arena cheia', { kind: 'play', key: 'm' + uid, sound: 'play' });
-    if (zone === 'board') {
-      const from = p.board.findIndex(m => m.uid === uid);
-      if (from < idx) idx--;
-      return doAction(() => ACTIONS.move(p, uid, idx), '', { sound: 'click' });
-    }
+
+document.addEventListener('pointermove', e => {
+  const st = PD.st;
+  if (!st || e.pointerId !== st.id) return;
+  if (!st.on) {
+    if (Math.hypot(e.clientX - st.x0, e.clientY - st.y0) < 8) return;
+    st.on = true;
+    const r = st.card.getBoundingClientRect();
+    st.dx = st.x0 - r.left; st.dy = st.y0 - r.top;
+    const g = st.card.cloneNode(true);
+    g.classList.add('pd-ghost'); g.classList.remove('sel');
+    g.style.width = r.width + 'px'; g.style.height = r.height + 'px';
+    document.body.appendChild(g);
+    st.ghost = g;
+    st.card.classList.add('pd-src');
+    document.body.classList.add('pdrag', 'pd-' + st.src);
+    $('#tip').hidden = true;
+    let bar = $('#pd-burn');
+    if (!bar) { bar = document.createElement('div'); bar.id = 'pd-burn'; document.body.appendChild(bar); }
+    bar.innerHTML = `${ICON.burn()}<span>${st.src === 'shop' ? 'Solte aqui para queimar · 1 ouro → Éter' : 'Solte aqui para queimar → Éter'}</span>`;
+    SFX.click();
   }
-  render();
-});
+  const x = e.clientX, y = e.clientY;
+  st.ghost.style.transform = `translate(${x - st.dx}px, ${y - st.dy}px) rotate(${Math.max(-12, Math.min(12, (x - st.x0) / 25))}deg) scale(1.08)`;
+  const z = dragZone(x, y, st.src);
+  const label = (ZONE_TEXT[st.src] || {})[z];
+  st.zone = label === undefined ? null : z;
+  document.body.dataset.pdz = st.zone || '';
+  st.ghost.dataset.hint = label || '';
+  st.ghost.classList.toggle('has-hint', !!label);
+  // feitiço: realça o alvo
+  document.querySelectorAll('.pd-target').forEach(c => c.classList.remove('pd-target'));
+  if (st.src === 'spell') { st.ghost.style.visibility = 'hidden'; const under = document.elementFromPoint(x, y); st.ghost.style.visibility = ''; const t = under && under.closest('.arena .card[data-zone="board"]'); if (t) t.classList.add('pd-target'); st.target = t ? +t.dataset.uid : null; }
+  e.preventDefault();
+}, { passive: false });
+
+function endDrag(e) {
+  const st = PD.st;
+  if (!st || (e && e.pointerId !== st.id)) return;
+  PD.st = null;
+  if (!st.on) return;
+  PD.justDragged = true; setTimeout(() => { PD.justDragged = false; }, 50);
+  st.ghost.remove();
+  st.card.classList.remove('pd-src');
+  document.body.classList.remove('pdrag', 'pd-' + st.src);
+  delete document.body.dataset.pdz;
+  document.querySelectorAll('.pd-target').forEach(c => c.classList.remove('pd-target'));
+  if (!e || e.type === 'pointercancel') return;
+  dropCard(st, st.zone, e.clientX);
+}
+document.addEventListener('pointerup', endDrag);
+document.addEventListener('pointercancel', endDrag);
+// um arrasto não vira clique
+document.addEventListener('click', e => { if (PD.justDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
+
+function dropCard(st, zone, x) {
+  const p = G.human, uid = st.uid;
+  if (!zone) return;
+  const idx = boardIndexAt(x);
+  if (st.src === 'shop') {
+    if (zone === 'burn') return doAction(() => ACTIONS.burnShop(p, uid), 'Queimar da loja custa 1 ouro', { kind: 'burn', sound: 'burn' });
+    const fromRect = keyRect('s' + uid);
+    const ringOn = hasHero(p, 'h-agua') && !p.firstBuyDone;
+    const m = doAction(() => ACTIONS.buy(p, uid), p.hand.length >= CONFIG.handSize ? 'Mão cheia' : 'Ouro insuficiente', { kind: 'buy', fromRect, fromKey: 's' + uid, sound: 'buy' });
+    if (!m) return;
+    SFX.coin();
+    if (ringOn) FX.relicFx('anel', $('#relic'));
+    if (zone === 'board' && p.board.length < CONFIG.boardSize) setTimeout(() => doAction(() => ACTIONS.play(p, m.uid, idx), 'Arena cheia', { kind: 'play', key: 'm' + m.uid, sound: 'play' }), 380);
+    return;
+  }
+  if (st.src === 'spellshop') {
+    const card = st.card;
+    if (card.dataset.mago) return doAction(() => ACTIONS.buyMago(p), p.hand.length >= CONFIG.handSize ? 'Mão cheia' : `O Mago custa ${MAGO_COST} ouro`, { kind: 'buy', fromRect: keyRect(card.dataset.key), fromKey: card.dataset.key, sound: 'spell' });
+    return doAction(() => ACTIONS.buySpell(p, uid), 'Éter insuficiente', { kind: 'buy', fromRect: keyRect('p' + uid), fromKey: 'p' + uid, sound: 'spell' });
+  }
+  if (st.src === 'spell') {
+    if (zone === 'burn') return doAction(() => ACTIONS.burn(p, uid), 'Não deu para queimar', { kind: 'burn', sound: 'burn' });
+    const it = p.hand.find(i => i.uid === uid); if (!it) return;
+    const sp = SPELL_BY_ID[it.spell];
+    if (sp.target && !st.target) { SFX.error(); return toast('Solte o feitiço em cima de um lacaio'); }
+    const ok = doAction(() => ACTIONS.cast(p, uid, st.target), 'Alvo inválido para esse feitiço', { sound: 'spell' });
+    if (ok) { const c = st.target && document.querySelector(`[data-key="m${st.target}"]`); FX.burst(c || $('.arena'), '#b69cff', !!c); }
+    return;
+  }
+  // carta sua (mão ou arena)
+  if (zone === 'sell') return doAction(() => ACTIONS.sell(p, uid), 'Não deu para vender', { kind: 'sell', sound: 'sell' });
+  if (zone === 'burn') return doAction(() => ACTIONS.burn(p, uid), 'Não deu para queimar', { kind: 'burn', sound: 'burn' });
+  if (zone === 'board' && st.src === 'hand') {
+    const r = doAction(() => ACTIONS.play(p, uid, idx), 'Arena cheia', { kind: 'play', key: 'm' + uid, sound: 'play' });
+    const m = r && p.board.find(b => b.uid === uid);
+    if (m && m.realm === 'terra' && hasHero(p, 'h-terra')) FX.relicFx('amuleto', $('#relic'));
+    return;
+  }
+  if (zone === 'board' && st.src === 'board') {
+    const from = p.board.findIndex(m => m.uid === uid);
+    let to = idx; if (from < to) to--;
+    if (from !== to) doAction(() => ACTIONS.move(p, uid, to), '', { sound: 'click' });
+  }
+}
 
 // ───────────────────────────── dica flutuante
 document.addEventListener('mouseover', e => {
