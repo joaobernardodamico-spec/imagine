@@ -30,7 +30,8 @@ export function moodPanel(p, edit) {
       <div><div class="kicker">Quadro de referências</div><h2>Moodboard</h2>
         <p class="muted">Clique numa imagem para ver em tela cheia. Arraste uma sobre a outra para trocar de lugar e puxe o canto para mudar o tamanho.</p></div>
       ${`<div class="row gap-8 wrap">
-        ${used.size ? `<button class="btn btn-ghost" data-act="moodPdf">${icon('download', 16)} Baixar A4</button>` : ''}` + (edit ? `
+        ${used.size ? `<button class="btn btn-ghost" data-act="moodPdf" title="A4 deitado, para imprimir ou enviar">${icon('download', 16)} PDF</button>
+        <button class="btn btn-ghost" data-act="moodPng" title="Imagem A4 deitado em alta (3508 × 2480)">${icon('download', 16)} PNG</button>` : ''}` + (edit ? `
         <button class="btn btn-ghost" data-act="moodUrl">${icon('link', 16)} Por link</button>
         <label class="btn btn-primary">${icon('upload', 16)} Enviar imagens<input type="file" accept="image/*" multiple hidden data-change="moodFiles"></label>` : '') + `
       </div>`}
@@ -253,6 +254,84 @@ export function wireMood(root, pid) {
   document.addEventListener('paste', window.__moodPaste);
 }
 
+// Folha A4 deitada (mesmo layout no PDF e no PNG)
+function printSheet(pid) {
+  const p = store.find('projects', pid);
+  const used = moodSlots(pid);
+  const last = Math.max(...used.keys());
+  const cells = Array.from({ length: last + 1 }, (_, i) => {
+    const m = used.get(i);
+    if (!m) return '<div class="mp-cell"></div>';
+    const [w, h] = sizeOf(m, i);
+    return `<figure class="mp-cell" style="grid-column:span ${Math.min(w, 6)};grid-row:span ${h}"><img src="${esc(m.url)}" alt=""></figure>`;
+  }).join('');
+  return `<section class="mood-print"><header><strong>${esc(p?.name || 'Projeto')}</strong><span>Moodboard · IMAGINE Concept</span></header><div class="mp-grid">${cells}</div></section>`;
+}
+
+// Carrega a imagem para o canvas. Imagem por link sem CORS "suja" o canvas e impede salvar,
+// então nesses casos a moldura sai cinza e avisamos.
+const loadImg = src => new Promise(res => {
+  const img = new Image();
+  if (!/^data:|^blob:/i.test(src)) img.crossOrigin = 'anonymous';
+  img.onload = () => res(img);
+  img.onerror = () => res(null);
+  img.src = src;
+});
+
+// PNG: monta a folha fora da tela, deixa o navegador fazer o layout e redesenha num canvas A4 a 300 dpi
+async function downloadPng(pid) {
+  const W = 3508, H = 2480;
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:-20000px;top:0;pointer-events:none';
+  host.innerHTML = printSheet(pid);
+  document.body.appendChild(host);
+  try {
+    await document.fonts?.ready;
+    const sheet = host.querySelector('.mood-print');
+    const base = sheet.getBoundingClientRect();
+    const k = W / base.width;
+    const c = Object.assign(document.createElement('canvas'), { width: W, height: H });
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+
+    // cabeçalho
+    for (const t of sheet.querySelectorAll('header strong, header span')) {
+      const r = t.getBoundingClientRect(), cs = getComputedStyle(t);
+      ctx.font = `${cs.fontWeight} ${parseFloat(cs.fontSize) * k}px ${cs.fontFamily}`;
+      ctx.fillStyle = cs.color; ctx.textBaseline = 'top';
+      ctx.fillText(t.textContent, (r.left - base.left) * k, (r.top - base.top) * k);
+    }
+
+    // imagens, com recorte "cover" e cantos arredondados como no A4
+    let missing = 0;
+    const radius = 2 * 3.78 * k; // 2mm
+    for (const fig of sheet.querySelectorAll('figure.mp-cell')) {
+      const r = fig.getBoundingClientRect();
+      const x = (r.left - base.left) * k, y = (r.top - base.top) * k, w = r.width * k, h = r.height * k;
+      ctx.save();
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, radius) : ctx.rect(x, y, w, h); ctx.clip();
+      ctx.fillStyle = '#f2f2f2'; ctx.fillRect(x, y, w, h);
+      const img = await loadImg(fig.querySelector('img').getAttribute('src'));
+      if (img) {
+        const s = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+        const iw = img.naturalWidth * s, ih = img.naturalHeight * s;
+        ctx.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
+      } else missing++;
+      ctx.restore();
+    }
+
+    const blob = await new Promise(res => c.toBlob(res, 'image/png'));
+    if (!blob) throw new Error('o navegador não gerou a imagem');
+    const name = (store.find('projects', pid)?.name || 'projeto').normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `moodboard-${name}.png` });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    if (missing) toast(`${missing} imagem${missing > 1 ? 'ns' : ''} por link não ${missing > 1 ? 'puderam' : 'pôde'} entrar no PNG (o site de origem bloqueia). Envie o arquivo para ela aparecer.`, { kind: 'error' });
+    else toast('PNG baixado', { kind: 'success' });
+  } finally { host.remove(); }
+}
+
 export const moodActions = {
   async moodFiles(el, e, { id }) { await addFiles(id, el.files, 0); el.value = ''; },
   moodUrl(el, e, { id }) {
@@ -282,18 +361,9 @@ export const moodActions = {
     });
   },
   async moodPdf(el, e, { id }) {
-    const p = store.find('projects', id);
-    const used = moodSlots(id);
-    const last = Math.max(...used.keys());
-    const cells = Array.from({ length: last + 1 }, (_, i) => {
-      const m = used.get(i);
-      if (!m) return '<div class="mp-cell"></div>';
-      const [w, h] = sizeOf(m, i);
-      return `<figure class="mp-cell" style="grid-column:span ${Math.min(w, 6)};grid-row:span ${h}"><img src="${esc(m.url)}" alt=""></figure>`;
-    }).join('');
     const root = document.createElement('div');
     root.id = 'print-root';
-    root.innerHTML = `<section class="mood-print"><header><strong>${esc(p.name)}</strong><span>Moodboard · IMAGINE Concept</span></header><div class="mp-grid">${cells}</div></section>`;
+    root.innerHTML = printSheet(id);
     document.body.appendChild(root);
     const page = document.createElement('style');
     page.textContent = '@page { size: A4 landscape; margin: 0; }';
@@ -304,6 +374,12 @@ export const moodActions = {
     window.addEventListener('afterprint', done);
     window.print();
     setTimeout(() => document.getElementById('print-root') && done(), 1500);
+  },
+  async moodPng(el, e, { id }) {
+    el.disabled = true;
+    try { await downloadPng(id); }
+    catch (err) { toast('Não consegui gerar o PNG: ' + err.message, { kind: 'error' }); }
+    finally { el.disabled = false; }
   },
   moodEdit(el) {
     const m = store.find('moodboard', el.dataset.id);
