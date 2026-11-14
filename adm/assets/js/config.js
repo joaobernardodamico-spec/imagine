@@ -440,6 +440,14 @@ export const INPI_STATUS = {
 };
 export const INPI_PAIN = 'Marca não registrada no INPI';
 
+// Raio-X da empresa: o que dá para levantar só olhando redes, Google e site.
+// Faixas de faturamento seguem os enquadramentos (MEI, ME, EPP…), fáceis de estimar.
+export const XRAY_EMPLOYEES = ['', 'Só o dono', '2 a 5', '6 a 10', '11 a 50', '51 a 200', 'Mais de 200'];
+export const XRAY_REVENUE = ['', 'Até R$ 81 mil/ano (MEI)', 'R$ 81 a 360 mil/ano', 'R$ 360 mil a 4,8 mi/ano', 'R$ 4,8 a 30 mi/ano', 'Mais de R$ 30 mi/ano'];
+export const XRAY_CHANNELS = ['WhatsApp', 'Instagram', 'Loja física', 'Site próprio', 'Marketplace', 'iFood / delivery', 'Representantes'];
+// [chave, rótulo, tipo]
+export const XRAY_NETS = [['ig', 'Instagram'], ['tiktok', 'TikTok'], ['fb', 'Facebook'], ['in', 'LinkedIn'], ['yt', 'YouTube']];
+
 // ------------------------------------------------------------
 // Serviços — no fim, toda dor mapeada vira uma entrega de valor
 // partner: normalmente executado por uma aliança

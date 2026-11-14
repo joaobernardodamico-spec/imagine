@@ -998,6 +998,18 @@ select.mini, input.mini { width: auto; padding: 4px 8px; font-size: 12px; height
 .inpi-registrada { color: var(--ok); background: var(--ok-soft); }
 .inpi-nao { color: var(--warn); background: var(--warn-soft); }
 .inpi-na { color: var(--ink-3); background: var(--surface-2); }
+/* Raio-X da empresa (ficha do lead) */
+.xray-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.xray-tile { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.xray-tile small, .xray-row > small { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.xray-tile strong { font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; }
+.xray-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; }
+.xray-row > small { width: 100%; }
+.xray-row p { margin: 0; }
+/* convite: pendente na lista da equipe e link pronto para mandar */
+.invite-pending { display: block; font-size: 11.5px; color: var(--warn); margin-top: 2px; }
+.invite-pending .link { font-size: inherit; }
+.invite-link input { width: 100%; font-family: ui-monospace, monospace; font-size: 12px; }
 .lpains { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .lpains span { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; }
 .lead-head { display: grid; grid-template-columns: 1fr auto; gap: 16px 24px; background: var(--surface); border: 1px solid var(--line); padding: 24px; margin-bottom: 16px; }

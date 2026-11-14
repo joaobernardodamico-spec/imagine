@@ -41,6 +41,12 @@ const NAV = [
 ];
 
 const $ = s => document.querySelector(s);
+
+// Chegada por link do Supabase (convite, acesso, troca de senha). Lido antes do supabase-js limpar o endereço.
+const LANDING = (() => {
+  const q = new URLSearchParams(location.hash.replace(/^#/, ''));
+  return { type: q.get('type'), error: q.get('error_description') || q.get('error') };
+})();
 let current = null;   // { view, params }
 let renderQueued = false;
 
@@ -220,9 +226,18 @@ function shellAction(a) {
     try { localStorage.setItem('imagine-hub:nav', a === 'navHide' ? 'hidden' : 'rail'); } catch { /* noop */ }
   }
   if (a === 'logout') store.signOut().then(() => renderLogin());
-  if (a === 'password') modal({
-    title: 'Definir minha senha',
-    body: '<p class="muted modal-lead">Depois disso você entra com e-mail e senha, sem precisar do link por e-mail.</p>',
+  if (a === 'password') passwordModal();
+  if (a === 'switch') { store.user = null; renderLogin(); }
+  if (a === 'theme') themeToggle();
+}
+
+function passwordModal({ welcome = false } = {}) {
+  modal({
+    title: welcome ? `Bem-vindo ao ATLAS, ${(me()?.name || '').split(' ')[0]}!` : 'Definir minha senha',
+    submit: welcome ? 'Criar senha e entrar' : 'Salvar',
+    body: welcome
+      ? '<p class="muted modal-lead">Crie sua senha. Nas próximas vezes você entra com seu e-mail e essa senha.</p>'
+      : '<p class="muted modal-lead">Depois disso você entra com e-mail e senha, sem precisar do link por e-mail.</p>',
     fields: [
       { name: 'password', label: 'Nova senha (mín. 8)', type: 'password', required: true },
       { name: 'confirm', label: 'Repetir senha', type: 'password', required: true },
@@ -231,15 +246,24 @@ function shellAction(a) {
       if (v.password.length < 8) throw new Error('Use pelo menos 8 caracteres.');
       if (v.password !== v.confirm) throw new Error('As senhas não conferem.');
       await store.setPassword(v.password);
-      toast('Senha definida. Já pode entrar com e-mail e senha.', { kind: 'success' });
+      toast(welcome ? 'Tudo certo! Sua conta está pronta.' : 'Senha definida. Já pode entrar com e-mail e senha.', { kind: 'success' });
     },
   });
-  if (a === 'switch') { store.user = null; renderLogin(); }
-  if (a === 'theme') {
-    const root = document.documentElement;
-    const dark = root.dataset.theme === 'dark';
-    root.dataset.theme = dark ? 'light' : 'dark';
-    try { localStorage.setItem('imagine-hub:theme', root.dataset.theme); } catch { /* noop */ }
+}
+
+function themeToggle() {
+  const root = document.documentElement;
+  const dark = root.dataset.theme === 'dark';
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('imagine-hub:theme', root.dataset.theme); } catch { /* noop */ }
+}
+
+// Depois de entrar: convidado no primeiro acesso (ou link de troca de senha) cria a senha na hora
+function afterLogin() {
+  const first = store.firstAccess;
+  if (first || LANDING.type === 'invite' || LANDING.type === 'recovery') {
+    store.firstAccess = false; LANDING.type = null;
+    setTimeout(() => passwordModal({ welcome: first }), 300);
   }
 }
 
@@ -251,10 +275,18 @@ async function boot() {
   try { if (localStorage.getItem('imagine-hub:nav') === 'hidden') document.body.classList.add('nav-hidden'); } catch { /* noop */ }
   ['click', 'change', 'input', 'submit'].forEach(delegate);
   window.addEventListener('hashchange', () => { document.body.classList.remove('nav-open'); if (store.user) renderView(); });
-  store.on(d => { if (d?.auth) return store.user ? renderApp() : renderLogin(); queueRender(); });
-  try { await store.init(); if (store.user && !remembered() && !sessionAlive()) await store.signOut(); }
-  catch (err) { console.error(err); $('#app').innerHTML = `<div class="boot-error">Falha ao conectar: ${esc(err.message)}</div>`; return; }
-  store.user ? renderApp() : renderLogin();
+  store.on(d => { if (d?.auth) { if (store.user) { renderApp(); afterLogin(); } else renderLogin(); return; } queueRender(); });
+  try {
+    await store.init();
+    // quem chega por link (convite, acesso) está entrando agora: não derruba a sessão
+    if (store.user && LANDING.type) try { sessionStorage.setItem('imagine-hub:alive', '1'); } catch { /* noop */ }
+    if (store.user && !remembered() && !sessionAlive()) await store.signOut();
+  } catch (err) { console.error(err); $('#app').innerHTML = `<div class="boot-error">Falha ao conectar: ${esc(err.message)}</div>`; return; }
+  if (store.user) { renderApp(); afterLogin(); return; }
+  renderLogin();
+  if (LANDING.error) toast(/expired|invalid/i.test(LANDING.error)
+    ? 'Esse link expirou ou já foi usado. Peça um link novo para quem te convidou.'
+    : `Não deu para entrar pelo link: ${LANDING.error}`, { kind: 'error' });
 }
 
 boot();

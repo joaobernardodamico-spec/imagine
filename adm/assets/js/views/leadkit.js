@@ -3,7 +3,7 @@
 import { store } from '../store.js';
 import {
   LEAD_STAGES, LEAD_WON, LEAD_LOST, LEAD_CHANNELS, LEAD_SEGMENTS, COMPANY_SIZES, SERVICES, PAIN_PRESETS, BANT,
-  INPI_STATUS, INPI_PAIN,
+  INPI_STATUS, INPI_PAIN, XRAY_EMPLOYEES, XRAY_REVENUE, XRAY_CHANNELS, XRAY_NETS,
 } from '../config.js';
 import { me, moveLead, leadToAccount } from '../ops.js';
 import { award } from '../game.js';
@@ -66,6 +66,53 @@ export function inpiSeal(x, { always = false } = {}) {
   return `<span class="inpi inpi-${k || 'na'}" title="${esc(s.label)}${k === 'nao' ? ' · oferecer o registro de marca' : ''}"><b>®</b> ${esc(k ? s.short : s.label)}</span>`;
 }
 export const inpiField = v => ({ name: 'inpi', label: 'Marca no INPI', type: 'select', value: v || '', options: Object.entries(INPI_STATUS).map(([k, s]) => [k, s.label]) });
+
+// ------------------------------------------------------------
+// Raio-X da empresa (leads.xray): porte, faturamento, redes, Google, canais e sinais
+// ------------------------------------------------------------
+const XRAY_FIELDS = [
+  { name: 'x_employees', key: 'employees', label: 'Funcionários (estimativa)', type: 'select', options: XRAY_EMPLOYEES.map(s => [s, s || '—']) },
+  { name: 'x_revenue', key: 'revenue', label: 'Faturamento estimado', type: 'select', options: XRAY_REVENUE.map(s => [s, s || '—']) },
+  { name: 'x_founded', key: 'founded', label: 'Desde (ano)', type: 'number', placeholder: 'Ex.: 2015' },
+  { name: 'x_ticket', key: 'ticket', label: 'Ticket médio (R$)', type: 'money', help: 'Quanto o cliente deles gasta por compra.' },
+  ...XRAY_NETS.map(([k, l]) => ({ name: `x_f_${k}`, key: `f_${k}`, label: `Seguidores no ${l}`, type: 'number', placeholder: '0' })),
+  { name: 'x_g_rating', key: 'g_rating', label: 'Nota no Google', type: 'number', placeholder: 'Ex.: 4,7' },
+  { name: 'x_g_reviews', key: 'g_reviews', label: 'Avaliações no Google', type: 'number', placeholder: 'Ex.: 5000' },
+  { name: 'x_channels', key: 'channels', label: 'Onde vende hoje', type: 'multi', full: true, options: XRAY_CHANNELS.map(c => [c, c]) },
+  { name: 'x_signals', key: 'signals', label: 'Sinais de saúde', type: 'textarea', full: true, placeholder: 'Ex.: posta todo dia, estacionamento cheio, abriu filial, vagas abertas, anúncios rodando' },
+  { name: 'x_source', key: 'source', label: 'De onde saíram esses dados', full: true, placeholder: 'Ex.: Instagram e Google Maps em 14/11' },
+];
+export const xrayFields = (x = {}) => XRAY_FIELDS.map(({ key, ...f }) => ({ ...f, value: x[key] ?? (f.type === 'multi' ? [] : '') }));
+export function readXray(v) {
+  const x = {};
+  for (const { name, key } of XRAY_FIELDS) {
+    const val = v[name]; delete v[name];
+    if (val === '' || val === null || val === undefined || (Array.isArray(val) && !val.length)) continue;
+    x[key] = val;
+  }
+  return x;
+}
+const nfmt = n => Number(n) >= 1000 ? `${(Number(n) / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil` : String(n);
+// Quanto do raio-x está preenchido (para a barrinha)
+export const xrayScore = (x = {}) => {
+  const groups = [x.employees, x.revenue, x.founded, x.ticket, XRAY_NETS.some(([k]) => x[`f_${k}`]), x.g_rating || x.g_reviews, x.channels?.length, x.signals];
+  return { done: groups.filter(Boolean).length, total: groups.length };
+};
+export function xrayView(x = {}) {
+  const tiles = [
+    x.employees && ['Funcionários', x.employees],
+    x.revenue && ['Faturamento', x.revenue],
+    x.founded && ['No mercado', `desde ${x.founded} · ${Math.max(0, new Date().getFullYear() - x.founded)} anos`],
+    x.ticket && ['Ticket médio', `R$ ${Number(x.ticket).toLocaleString('pt-BR')}`],
+    (x.g_rating || x.g_reviews) && ['Google', `${x.g_rating ? `${String(x.g_rating).replace('.', ',')} ★` : ''}${x.g_reviews ? ` · ${nfmt(x.g_reviews)} avaliações` : ''}`],
+    ...XRAY_NETS.filter(([k]) => x[`f_${k}`]).map(([k, l]) => [l, `${nfmt(x[`f_${k}`])} seguidores`]),
+  ].filter(Boolean);
+  if (!tiles.length && !x.channels?.length && !x.signals) return '<p class="muted">Ainda não levantado. Use "Editar dados" e preencha o que der para ver nas redes, no Google e no site.</p>';
+  return `<div class="xray-tiles">${tiles.map(([k, v]) => `<div class="xray-tile"><small>${esc(k)}</small><strong>${esc(v)}</strong></div>`).join('')}</div>
+    ${x.channels?.length ? `<div class="xray-row"><small>Vende por</small>${x.channels.map(c => `<span class="tag">${esc(c)}</span>`).join('')}</div>` : ''}
+    ${x.signals ? `<div class="xray-row"><small>Sinais de saúde</small><p class="pre">${esc(x.signals)}</p></div>` : ''}
+    ${x.source ? `<p class="fine">Fonte: ${esc(x.source)}</p>` : ''}`;
+}
 
 // Sem registro no INPI → a dor de registro entra sozinha no mapa (vira entrega na proposta)
 export function withInpiPain(pains, inpi) {
@@ -213,6 +260,9 @@ export function leadModal(l = {}, { onSaved } = {}) {
       { name: 'tiktok', label: 'TikTok', value: l.tiktok, prefix: 'tiktok', placeholder: '@empresa' },
       { name: 'facebook', label: 'Facebook', value: l.facebook, prefix: 'facebook', placeholder: 'facebook.com/empresa' },
 
+      { section: 'Raio-X da empresa', hint: 'Estimativas tiradas das redes, do Google e do site. Ajudam a calibrar o preço da proposta.' },
+      ...xrayFields(l.xray || {}),
+
       { section: 'Contato' },
       { name: 'name', label: 'Nome do contato', required: true, value: l.name, placeholder: 'Quem fala pela empresa' },
       { name: 'role_title', label: 'Cargo', value: l.role_title, placeholder: 'Ex.: CEO e Founder' },
@@ -240,7 +290,8 @@ export function leadModal(l = {}, { onSaved } = {}) {
     async onSubmit(v) {
       const bant = Object.fromEntries(BANT.map(q => [q.key, v[`bant_${q.key}`] || '']));
       BANT.forEach(q => delete v[`bant_${q.key}`]);
-      const row = { ...v, bant, pains: withInpiPain(readPains(ctx.root), v.inpi), uf: (v.uf || '').toUpperCase() || null };
+      const xray = readXray(v);
+      const row = { ...v, bant, xray, pains: withInpiPain(readPains(ctx.root), v.inpi), uf: (v.uf || '').toUpperCase() || null };
       if (isNew) {
         const dup = store.all('leads').find(x =>
           (row.email && x.email && x.email.toLowerCase() === row.email.toLowerCase()) ||

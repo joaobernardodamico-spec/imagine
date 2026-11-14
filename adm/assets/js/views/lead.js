@@ -8,7 +8,7 @@ import { tabs } from './components.js';
 import { filesPanel, fileActions } from './files.js';
 import {
   CH_ICON, leadName, leadLogo, socials, webUrl, mapsUrl, alliance, activeAlliances, proposalTotal, leadValue,
-  move, convertLead, leadModal, painEditor, wirePainEditor, readPains, painList, inpiSeal,
+  move, convertLead, leadModal, painEditor, wirePainEditor, readPains, painList, inpiSeal, xrayView, xrayScore,
 } from './leadkit.js';
 
 const PROP_STATUS = { rascunho: 'Rascunho', enviada: 'Enviada', aceita: 'Aceita', recusada: 'Recusada' };
@@ -134,6 +134,11 @@ function summary(l) {
           ['Indicação / relação', esc(l.referral)],
           ['Marca no INPI', inpiSeal(l, { always: true })],
         ])}
+      </section>
+      <section class="card xray">
+        <div class="card-head"><h2>${icon('search', 16)} Raio-X da empresa</h2><span class="muted">${xrayScore(l.xray).done}/${xrayScore(l.xray).total}</span></div>
+        ${progressBar(xrayScore(l.xray).done, xrayScore(l.xray).total)}
+        <div class="mt-12">${xrayView(l.xray || {})}</div>
       </section>
       <section class="card">
         <div class="card-head"><h2>Contato</h2></div>

@@ -60,6 +60,13 @@ export const store = {
   async loadSession(session) {
     const { data: prof } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
     this.user = prof;
+    // Primeiro acesso de quem foi convidado: marca a entrada e pede para criar a senha
+    if (prof?.invited_at && !prof.joined_at) {
+      this.firstAccess = true;
+      const joined_at = new Date().toISOString();
+      const { error } = await sb.from('profiles').update({ joined_at }).eq('id', prof.id);
+      if (!error) prof.joined_at = joined_at;
+    }
     await this.loadAll();
   },
 
@@ -152,9 +159,15 @@ export const store = {
     this.emit({ table, op: 'remove', id });
   },
 
-  // Convida uma pessoa (função invite-member: manda o e-mail do Supabase e cria o perfil)
+  // Convite (função invite-member): cria a conta, grava o perfil e devolve o link de primeiro acesso.
+  // action 'link' só gera um link novo para quem ainda não entrou.
   async invite(body) {
-    const { data, error } = await sb.functions.invoke('invite-member', { body });
+    const redirectTo = location.origin + location.pathname;
+    if (DEMO) {
+      let p = body.action === 'link' ? null : await this.insert('profiles', { ...body, active: true, invited_at: new Date().toISOString(), joined_at: null });
+      return { profile: p, link: `${redirectTo}#convite-demo` };
+    }
+    const { data, error } = await sb.functions.invoke('invite-member', { body: { ...body, redirectTo } });
     if (error) {
       let msg = error.message;
       try { msg = (await error.context.json()).error || msg; } catch { /* resposta sem JSON */ }
@@ -162,9 +175,11 @@ export const store = {
     }
     if (data?.error) throw new Error(data.error);
     const p = data.profile;
-    this.data.profiles = [...this.data.profiles.filter(x => x.id !== p.id), p];
-    this.emit({ table: 'profiles', op: 'insert', row: p });
-    return p;
+    if (p) {
+      this.data.profiles = [...this.data.profiles.filter(x => x.id !== p.id), p];
+      this.emit({ table: 'profiles', op: 'insert', row: p });
+    }
+    return data;
   },
 
   // ---------- utilidades do modo demo ----------

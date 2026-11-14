@@ -407,6 +407,11 @@ alter table leads add column if not exists facebook text default '';
 alter table accounts add column if not exists tiktok text default '';
 alter table accounts add column if not exists facebook text default '';
 -- arquivos também podem pertencer a um lead (proposta, diagnóstico antes de virar cliente)
+-- Raio-X da empresa (funcionários, faturamento, seguidores, Google, canais, sinais)
+alter table leads add column if not exists xray jsonb not null default '{}';
+-- convite: quando foi convidada e quando entrou pela primeira vez (pendente = invited_at sem joined_at)
+alter table profiles add column if not exists invited_at timestamptz;
+alter table profiles add column if not exists joined_at timestamptz;
 alter table files add column if not exists lead_id uuid references leads(id) on delete cascade;
 drop policy if exists files_all on files;
 create policy files_all on files for all to authenticated

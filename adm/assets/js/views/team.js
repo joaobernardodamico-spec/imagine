@@ -29,7 +29,8 @@ export default {
             const lv = levelOf(xpOf(p.id));
             const n = store.where('project_members', m => m.user_id === p.id).length;
             return `<tr class="${p.active === false ? 'inactive' : ''}">
-              <td><span class="person">${avatar(p, 32)}<span><strong>${esc(p.name)}</strong><small class="muted">${esc(p.email)}</small></span></span></td>
+              <td><span class="person">${avatar(p, 32)}<span><strong>${esc(p.name)}</strong><small class="muted">${esc(p.email)}</small>
+                ${p.invited_at && !p.joined_at ? `<span class="invite-pending">Convite pendente · <button class="link" data-act="newLink" data-id="${esc(p.id)}">gerar link novo</button></span>` : ''}</span></span></td>
               <td>${esc(p.title || '')}</td>
               <td><select class="mini" data-change="role" data-id="${esc(p.id)}" ${p.id === me().id ? 'disabled title="Você não pode mudar o próprio papel"' : ''}>
                 ${Object.entries(ROLES).map(([k, r]) => `<option value="${k}" ${k === p.role ? 'selected' : ''}>${r.label}</option>`).join('')}</select></td>
@@ -66,6 +67,13 @@ export default {
   actions: {
     role(el) { store.update('profiles', el.dataset.id, { role: el.value }).then(() => toast('Papel atualizado')); },
     newMember() { memberModal(); },
+    async newLink(el) {
+      const p = store.find('profiles', el.dataset.id);
+      el.disabled = true;
+      try { const r = await store.invite({ email: p.email, name: p.name, action: 'link' }); inviteLinkModal(p, r.link); }
+      catch (err) { toast(err.message, { kind: 'error' }); }
+      finally { el.disabled = false; }
+    },
     editMember(el) { memberModal(store.find('profiles', el.dataset.id)); },
     exportData() {
       const blob = new Blob([store.exportJSON()], { type: 'application/json' });
@@ -85,11 +93,32 @@ export default {
   },
 };
 
+// Link de convite pronto para mandar. Vale uma vez e expira (padrão do Supabase: 24 h).
+function inviteLinkModal(p, link) {
+  const first = (p.name || '').split(' ')[0] || 'oi';
+  const msg = `Fala, ${first}! Te adicionei no ATLAS, o sistema da IMAGINE. Entra por este link e cria sua senha:\n${link}`;
+  const ctx = modal({
+    title: `Convite de ${p.name || p.email}`,
+    body: `<p class="muted modal-lead">Mande o link para ${esc(p.email)}. Ele vale uma vez e expira em 24 h. Se expirar, use "gerar link novo" na lista.</p>
+      <div class="invite-link"><input readonly value="${esc(link)}" aria-label="Link de convite"></div>
+      <div class="row gap-8 wrap mt-16">
+        <button type="button" class="btn btn-primary" data-inv="copy">${icon('link', 16)} Copiar link</button>
+        <a class="btn btn-ghost" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">${icon('chat', 16)} WhatsApp</a>
+        <a class="btn btn-ghost" href="mailto:${encodeURIComponent(p.email)}?subject=${encodeURIComponent('Seu acesso ao ATLAS')}&body=${encodeURIComponent(msg)}">${icon('mail', 16)} E-mail</a>
+      </div>`,
+  });
+  ctx.root.querySelector('[data-inv=copy]').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(link); toast('Link copiado', { kind: 'success' }); }
+    catch { ctx.root.querySelector('.invite-link input').select(); toast('Selecionei o link: copie com Ctrl+C'); }
+  });
+}
+
 function memberModal(p = {}) {
   const isNew = !p.id;
   modal({
     title: isNew ? 'Adicionar pessoa' : p.name,
-    body: isNew && !DEMO ? '<p class="muted modal-lead">A pessoa recebe um e-mail de convite e cria a própria senha. Ela já entra com o papel escolhido aqui.</p>' : '',
+    submit: isNew ? 'Gerar convite' : 'Salvar',
+    body: isNew ? '<p class="muted modal-lead">O ATLAS gera um link de convite para você mandar (WhatsApp ou e-mail). No primeiro acesso a pessoa cria a própria senha e já entra com o papel escolhido aqui.</p>' : '',
     fields: [
       { name: 'name', label: 'Nome', required: true, value: p.name },
       { name: 'email', label: 'E-mail', type: 'email', required: true, value: p.email },
@@ -103,9 +132,8 @@ function memberModal(p = {}) {
     ],
     async onSubmit(v) {
       if (isNew) {
-        if (DEMO) return void await store.insert('profiles', { ...v, active: true });
-        const prof = await store.invite({ ...v, redirectTo: location.origin + location.pathname });
-        toast(`Convite enviado para ${prof.email}`, { kind: 'success' });
+        const r = await store.invite(v);
+        setTimeout(() => inviteLinkModal(r.profile || v, r.link), 200);
       } else await store.update('profiles', p.id, v);
     },
   });
