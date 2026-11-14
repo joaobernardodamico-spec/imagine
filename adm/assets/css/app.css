@@ -992,6 +992,12 @@ select.mini, input.mini { width: auto; padding: 4px 8px; font-size: 12px; height
 .lcard-top { display: flex; align-items: center; gap: 10px; }
 .lcard-id { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .lseg { font-size: 10px; color: var(--ink-3); letter-spacing: .04em; }
+/* selo INPI: registrada (verde), sem registro (âmbar = oportunidade), não verificado (cinza) */
+.inpi { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 999px; white-space: nowrap; line-height: 1.5; }
+.inpi b { font-size: 11px; }
+.inpi-registrada { color: var(--ok); background: var(--ok-soft); }
+.inpi-nao { color: var(--warn); background: var(--warn-soft); }
+.inpi-na { color: var(--ink-3); background: var(--surface-2); }
 .lpains { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .lpains span { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; }
 .lead-head { display: grid; grid-template-columns: 1fr auto; gap: 16px 24px; background: var(--surface); border: 1px solid var(--line); padding: 24px; margin-bottom: 16px; }

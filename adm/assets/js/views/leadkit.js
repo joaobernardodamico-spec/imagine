@@ -3,6 +3,7 @@
 import { store } from '../store.js';
 import {
   LEAD_STAGES, LEAD_WON, LEAD_LOST, LEAD_CHANNELS, LEAD_SEGMENTS, COMPANY_SIZES, SERVICES, PAIN_PRESETS, BANT,
+  INPI_STATUS, INPI_PAIN,
 } from '../config.js';
 import { me, moveLead, leadToAccount } from '../ops.js';
 import { award } from '../game.js';
@@ -51,7 +52,25 @@ export function socials(l, size = 15) {
     l.website ? `<a class="lsoc" href="${esc(webUrl(l.website))}" target="_blank" rel="noopener" title="Site">${icon('globe', size)}</a>` : '',
     l.instagram ? `<a class="lsoc lsoc-ig" href="${esc(igUrl(l.instagram))}" target="_blank" rel="noopener" title="Instagram">${icon('instagram', size)}</a>` : '',
     l.linkedin ? `<a class="lsoc lsoc-in" href="${esc(inUrl(l.linkedin))}" target="_blank" rel="noopener" title="LinkedIn">${icon('linkedin', size)}</a>` : '',
+    l.tiktok ? `<a class="lsoc" href="${esc(netUrl(l.tiktok, 'tiktok.com/@'))}" target="_blank" rel="noopener" title="TikTok">${icon('tiktok', size)}</a>` : '',
+    l.facebook ? `<a class="lsoc" href="${esc(netUrl(l.facebook, 'facebook.com/'))}" target="_blank" rel="noopener" title="Facebook">${icon('facebook', size)}</a>` : '',
   ].join('');
+}
+const netUrl = (v, base) => { const s = String(v || '').trim(); return /^https?:\/\//i.test(s) ? s : `https://${base}${s.replace(/^@/, '')}`; };
+
+// Selo do INPI (lead ou conta). "Sem registro" = serviço de registro a oferecer.
+export function inpiSeal(x, { always = false } = {}) {
+  const k = x?.inpi || '';
+  if (!k && !always) return '';
+  const s = INPI_STATUS[k] || INPI_STATUS[''];
+  return `<span class="inpi inpi-${k || 'na'}" title="${esc(s.label)}${k === 'nao' ? ' · oferecer o registro de marca' : ''}"><b>®</b> ${esc(k ? s.short : s.label)}</span>`;
+}
+export const inpiField = v => ({ name: 'inpi', label: 'Marca no INPI', type: 'select', value: v || '', options: Object.entries(INPI_STATUS).map(([k, s]) => [k, s.label]) });
+
+// Sem registro no INPI → a dor de registro entra sozinha no mapa (vira entrega na proposta)
+export function withInpiPain(pains, inpi) {
+  if (inpi !== 'nao' || pains.some(p => p.service === 'registro')) return pains;
+  return [...pains, { dor: INPI_PAIN, service: 'registro', alliance_id: activeAlliances().find(a => a.service === 'registro')?.id || null }];
 }
 
 export const proposalTotal = l => (l.proposal?.entregas || []).reduce((s, e) => s + Number(e.valor || 0), 0);
@@ -184,12 +203,15 @@ export function leadModal(l = {}, { onSaved } = {}) {
       { name: 'city', label: 'Cidade', value: l.city },
       { name: 'uf', label: 'UF', value: l.uf, placeholder: 'SP' },
       { name: 'address', label: 'Endereço', value: l.address, full: true, placeholder: 'Rua, número, bairro (usado no mapa)' },
+      { ...inpiField(l.inpi), help: 'Sem registro: o registro de marca entra sozinho no mapa de dores.' },
 
       { section: 'Canal e redes' },
       { name: 'source', label: 'Canal', type: 'chips', required: true, value: l.source || '', options: LEAD_CHANNELS.map(c => [c, c, CH_ICON[c]]), full: true },
       { name: 'referral', label: 'Quem indicou / relação', value: l.referral, full: true, placeholder: 'Ex.: cliente antigo, amiga da Alexandra, evento X' },
       { name: 'instagram', label: 'Instagram', value: l.instagram, prefix: 'instagram', placeholder: '@empresa' },
       { name: 'linkedin', label: 'LinkedIn', value: l.linkedin, prefix: 'linkedin', placeholder: 'linkedin.com/company/empresa' },
+      { name: 'tiktok', label: 'TikTok', value: l.tiktok, prefix: 'tiktok', placeholder: '@empresa' },
+      { name: 'facebook', label: 'Facebook', value: l.facebook, prefix: 'facebook', placeholder: 'facebook.com/empresa' },
 
       { section: 'Contato' },
       { name: 'name', label: 'Nome do contato', required: true, value: l.name, placeholder: 'Quem fala pela empresa' },
@@ -218,7 +240,7 @@ export function leadModal(l = {}, { onSaved } = {}) {
     async onSubmit(v) {
       const bant = Object.fromEntries(BANT.map(q => [q.key, v[`bant_${q.key}`] || '']));
       BANT.forEach(q => delete v[`bant_${q.key}`]);
-      const row = { ...v, bant, pains: readPains(ctx.root), uf: (v.uf || '').toUpperCase() || null };
+      const row = { ...v, bant, pains: withInpiPain(readPains(ctx.root), v.inpi), uf: (v.uf || '').toUpperCase() || null };
       if (isNew) {
         const dup = store.all('leads').find(x =>
           (row.email && x.email && x.email.toLowerCase() === row.email.toLowerCase()) ||

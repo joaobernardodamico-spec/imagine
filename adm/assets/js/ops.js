@@ -295,7 +295,7 @@ export async function leadToAccount(lead) {
   const a = await store.insert('accounts', {
     kind: 'cliente', name: lead.company || lead.name, segment: lead.segment || '', contact_name: lead.name,
     contact_email: lead.email || '', contact_phone: lead.phone || '', instagram: lead.instagram || '', links: [],
-    website: lead.website || '',
+    website: lead.website || '', tiktok: lead.tiktok || '', facebook: lead.facebook || '', inpi: lead.inpi || '',
     notes: [lead.razao_social ? `Razão social: ${lead.razao_social}` : '', lead.cnpj ? `CNPJ: ${lead.cnpj}` : '', lead.linkedin ? `LinkedIn: ${lead.linkedin}` : '', lead.notes || ''].filter(Boolean).join('\n'),
     brand: { colors: [], fonts: [], tone: '', essence: '', dos: '', donts: '', logo_url: lead.logo_url || '', manual_url: '' },
   });

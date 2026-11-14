@@ -432,6 +432,14 @@ export const LEAD_SEGMENTS = ['Alimentação', 'Moda', 'Saúde e bem-estar', 'Te
 
 export const COMPANY_SIZES = ['', 'MEI', 'Micro', 'Pequena', 'Média', 'Grande'];
 
+// Selo da marca no INPI. "nao" = oportunidade: oferecer o registro como extensão do nosso trabalho.
+export const INPI_STATUS = {
+  '':         { label: 'INPI não verificado', short: 'Não verificado' },
+  registrada: { label: 'Marca registrada no INPI', short: 'Registrada' },
+  nao:        { label: 'Marca sem registro no INPI', short: 'Sem registro' },
+};
+export const INPI_PAIN = 'Marca não registrada no INPI';
+
 // ------------------------------------------------------------
 // Serviços — no fim, toda dor mapeada vira uma entrega de valor
 // partner: normalmente executado por uma aliança
@@ -447,7 +455,7 @@ export const SERVICES = {
 
 // Atalhos do mapa de dores (dor → serviço que resolve)
 export const PAIN_PRESETS = [
-  ['Marca não registrada no INPI', 'registro'],
+  [INPI_PAIN, 'registro'],
   ['Site inexistente', 'web'],
   ['Linktree / links desfuncionais', 'web'],
   ['Site desatualizado ou lento', 'web'],

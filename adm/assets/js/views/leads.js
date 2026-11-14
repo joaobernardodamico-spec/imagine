@@ -7,7 +7,7 @@ import { me, profile } from '../ops.js';
 import { esc, icon, avatar, money, relDays, modal, thisMonth, inMonth, toast, today } from '../util.js';
 import { pageHead } from './components.js';
 import { hbars, funnel, line, kpi, panel, dashboard, lastMonths, monthLabel, shortMoney } from '../charts.js';
-import { CH_ICON, leadName, leadLogo, socials, leadValue, move, convertLead, leadModal } from './leadkit.js';
+import { CH_ICON, leadName, leadLogo, socials, leadValue, move, convertLead, leadModal, inpiSeal } from './leadkit.js';
 
 const state = { owner: 'todos', channel: 'todos', q: '', lost: false, dash: true, view: 'quadro' };
 const LS_MAP = 'imagine-hub:mymaps';
@@ -131,6 +131,7 @@ function card(l) {
       ${l.source ? `<span class="lchan">${icon(CH_ICON[l.source] || 'link', 13)} ${esc(l.source)}</span>` : ''}
       ${fresh ? '<span class="lnew">Novo · site</span>' : ''}
       ${l.segment ? `<span class="lseg">${esc(l.segment)}</span>` : ''}
+      ${inpiSeal(l)}
       <span class="lsocs">${socials(l)}</span>
     </div>
     ${pains.length ? `<div class="lpains" title="${esc(pains.map(p => p.dor).join(' · '))}">${[...new Set(pains.map(p => p.service))].map(s => `<span>${esc(SERVICES[s]?.short || s)}</span>`).join('')}</div>` : ''}

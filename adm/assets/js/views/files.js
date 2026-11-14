@@ -8,6 +8,7 @@ export const FILE_SLOTS = [
   { kind: 'briefing', label: 'Briefing', desc: 'O direcionador do projeto' },
   { kind: 'contrato', label: 'Contrato', desc: 'Versão assinada' },
   { kind: 'proposta', label: 'Proposta', desc: 'O que foi vendido' },
+  { kind: 'diagnostico', label: 'Diagnóstico', desc: 'Análise da marca e do mercado' },
   { kind: 'drive',    label: 'Pasta do cliente', desc: 'Drive com tudo' },
   { kind: 'figma',    label: 'Figma / arquivos de design', desc: 'Onde o trabalho vive' },
   { kind: 'acesso',   label: 'Acessos', desc: 'Link do cofre de senhas' },
@@ -15,15 +16,20 @@ export const FILE_SLOTS = [
 
 const KIND_LABEL = Object.fromEntries([...FILE_SLOTS.map(s => [s.kind, s.label]), ['outro', 'Outro']]);
 
-export function filesPanel({ project_id = null, account_id = null, compact = false }) {
-  const rows = store.where('files', f => (project_id ? f.project_id === project_id : f.account_id === account_id && !f.project_id));
+// Lead (ainda não é cliente): só proposta e diagnóstico
+const LEAD_SLOTS = ['proposta', 'diagnostico'];
+
+export function filesPanel({ project_id = null, account_id = null, lead_id = null, compact = false }) {
+  const rows = store.where('files', f => (lead_id ? f.lead_id === lead_id
+    : project_id ? f.project_id === project_id : f.account_id === account_id && !f.project_id && !f.lead_id));
+  const slots = lead_id ? FILE_SLOTS.filter(s => LEAD_SLOTS.includes(s.kind)) : FILE_SLOTS;
   const slot = kind => rows.find(f => f.kind === kind);
-  const others = rows.filter(f => f.kind === 'outro' || !FILE_SLOTS.some(s => s.kind === f.kind) || rows.filter(x => x.kind === f.kind).indexOf(f) > 0);
-  const ctx = `data-project="${esc(project_id || '')}" data-account="${esc(account_id || '')}"`;
+  const others = rows.filter(f => f.kind === 'outro' || !slots.some(s => s.kind === f.kind) || rows.filter(x => x.kind === f.kind).indexOf(f) > 0);
+  const ctx = `data-project="${esc(project_id || '')}" data-account="${esc(account_id || '')}" data-lead="${esc(lead_id || '')}"`;
 
   return `<div class="files">
     <div class="slots">
-      ${FILE_SLOTS.map(s => {
+      ${slots.map(s => {
         const f = slot(s.kind);
         if (!f && s.kind === 'briefing' && project_id) {
           return `<a class="slot filled" href="#/projetos/${esc(project_id)}/briefing">
@@ -68,11 +74,12 @@ export const fileActions = {
   addFile(el) {
     const project_id = el.dataset.project || null;
     let account_id = el.dataset.account || null;
+    const lead_id = el.dataset.lead || null;
     if (project_id && !account_id) account_id = store.find('projects', project_id)?.account_id || null;
     modal({
       title: 'Adicionar link',
       fields: fileFields({ kind: el.dataset.kind }),
-      async onSubmit(v) { await store.insert('files', { ...v, project_id, account_id, created_by: me().id }); },
+      async onSubmit(v) { await store.insert('files', { ...v, project_id, account_id, ...(lead_id ? { lead_id } : {}), created_by: me().id }); },
     });
   },
   editFile(el) {

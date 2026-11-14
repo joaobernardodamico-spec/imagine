@@ -89,7 +89,7 @@ function memberModal(p = {}) {
   const isNew = !p.id;
   modal({
     title: isNew ? 'Adicionar pessoa' : p.name,
-    body: isNew && !DEMO ? '<p class="muted modal-lead">No Supabase: convide o e-mail em Authentication → Users → Invite. O perfil é criado sozinho no primeiro login; depois ajuste o papel aqui.</p>' : '',
+    body: isNew && !DEMO ? '<p class="muted modal-lead">A pessoa recebe um e-mail de convite e cria a própria senha. Ela já entra com o papel escolhido aqui.</p>' : '',
     fields: [
       { name: 'name', label: 'Nome', required: true, value: p.name },
       { name: 'email', label: 'E-mail', type: 'email', required: true, value: p.email },
@@ -103,8 +103,9 @@ function memberModal(p = {}) {
     ],
     async onSubmit(v) {
       if (isNew) {
-        if (!DEMO) throw new Error('Convide pelo Supabase (Authentication → Invite). O perfil aparece aqui no primeiro login.');
-        await store.insert('profiles', { ...v, active: true });
+        if (DEMO) return void await store.insert('profiles', { ...v, active: true });
+        const prof = await store.invite({ ...v, redirectTo: location.origin + location.pathname });
+        toast(`Convite enviado para ${prof.email}`, { kind: 'success' });
       } else await store.update('profiles', p.id, v);
     },
   });

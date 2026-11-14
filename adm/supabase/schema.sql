@@ -399,6 +399,20 @@ alter table leads add column if not exists bant jsonb not null default '{}';
 alter table leads add column if not exists pains jsonb not null default '[]';
 alter table leads add column if not exists proposal jsonb not null default '{}';
 
+-- Selo INPI ('' = não verificado, 'registrada', 'nao') e mais redes
+alter table leads add column if not exists inpi text not null default '';
+alter table accounts add column if not exists inpi text not null default '';
+alter table leads add column if not exists tiktok text default '';
+alter table leads add column if not exists facebook text default '';
+alter table accounts add column if not exists tiktok text default '';
+alter table accounts add column if not exists facebook text default '';
+-- arquivos também podem pertencer a um lead (proposta, diagnóstico antes de virar cliente)
+alter table files add column if not exists lead_id uuid references leads(id) on delete cascade;
+drop policy if exists files_all on files;
+create policy files_all on files for all to authenticated
+  using (case when lead_id is not null then is_sales() when project_id is null then is_staff() else can_see_project(project_id) end)
+  with check (case when lead_id is not null then is_sales() when project_id is null then is_staff() else can_see_project(project_id) end);
+
 alter table projects add column if not exists alliances jsonb not null default '[]';
 alter table projects add column if not exists reminders jsonb not null default '[]';
 alter table stages add column if not exists journal jsonb not null default '{}';

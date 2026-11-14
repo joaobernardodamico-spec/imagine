@@ -152,6 +152,21 @@ export const store = {
     this.emit({ table, op: 'remove', id });
   },
 
+  // Convida uma pessoa (função invite-member: manda o e-mail do Supabase e cria o perfil)
+  async invite(body) {
+    const { data, error } = await sb.functions.invoke('invite-member', { body });
+    if (error) {
+      let msg = error.message;
+      try { msg = (await error.context.json()).error || msg; } catch { /* resposta sem JSON */ }
+      throw new Error(msg);
+    }
+    if (data?.error) throw new Error(data.error);
+    const p = data.profile;
+    this.data.profiles = [...this.data.profiles.filter(x => x.id !== p.id), p];
+    this.emit({ table: 'profiles', op: 'insert', row: p });
+    return p;
+  },
+
   // ---------- utilidades do modo demo ----------
   resetDemo() {
     safeDel(LS_DATA);

@@ -5,9 +5,10 @@ import { LEAD_STAGES, LEAD_WON, LEAD_LOST, SERVICES, BANT } from '../config.js';
 import { profile, moveLead } from '../ops.js';
 import { esc, icon, avatar, money, date, relDays, ago, empty, toast, today, progressBar } from '../util.js';
 import { tabs } from './components.js';
+import { filesPanel, fileActions } from './files.js';
 import {
   CH_ICON, leadName, leadLogo, socials, webUrl, mapsUrl, alliance, activeAlliances, proposalTotal, leadValue,
-  move, convertLead, leadModal, painEditor, wirePainEditor, readPains, painList,
+  move, convertLead, leadModal, painEditor, wirePainEditor, readPains, painList, inpiSeal,
 } from './leadkit.js';
 
 const PROP_STATUS = { rascunho: 'Rascunho', enviada: 'Enviada', aceita: 'Aceita', recusada: 'Recusada' };
@@ -34,6 +35,7 @@ export default {
   },
 
   actions: {
+    ...fileActions,
     edit(el, e, { id }) { leadModal(store.find('leads', id)); },
     async stage(el, e, { id }) { await move(store.find('leads', id), el.dataset.stage); },
     async lost(el, e, { id }) { await move(store.find('leads', id), LEAD_LOST); },
@@ -82,6 +84,7 @@ function head(l) {
         <div class="row gap-8 wrap">
           ${l.source ? `<span class="lchan">${icon(CH_ICON[l.source] || 'link', 13)} ${esc(l.source)}</span>` : ''}
           ${l.segment ? `<span class="lseg">${esc(l.segment)}</span>` : ''}
+          ${inpiSeal(l, { always: true })}
           ${l.stage === LEAD_LOST ? '<span class="tag tag-status-cancelado">Perdido</span>' : ''}
         </div>
         <h1>${esc(leadName(l))}</h1>
@@ -129,6 +132,7 @@ function summary(l) {
           ['Site', l.website ? `<a class="link-plain" href="${esc(webUrl(l.website))}" target="_blank" rel="noopener">${esc(l.website)}</a>` : ''],
           ['Endereço', [l.address, l.city, l.uf].filter(Boolean).length ? `${esc([l.address, l.city, l.uf].filter(Boolean).join(', '))}${maps ? ` · <a class="link-plain" href="${esc(maps)}" target="_blank" rel="noopener">ver no mapa</a>` : ''}` : ''],
           ['Indicação / relação', esc(l.referral)],
+          ['Marca no INPI', inpiSeal(l, { always: true })],
         ])}
       </section>
       <section class="card">
@@ -162,6 +166,10 @@ function summary(l) {
         <div class="card-head"><h2>Proposta</h2><a class="link" href="#/leads/${esc(l.id)}/proposta">Abrir ${icon('arrow', 14)}</a></div>
         ${l.proposal?.entregas?.length ? `<p><strong>${money(proposalTotal(l))}</strong> · ${l.proposal.entregas.length} entregas · <span class="tag">${esc(PROP_STATUS[l.proposal.status] || 'Rascunho')}</span></p>
           ${l.proposal.objetivo ? `<p class="muted">${esc(l.proposal.objetivo)}</p>` : ''}` : '<p class="muted">Ainda não montada. Ela nasce do mapa de dores.</p>'}
+      </section>
+      <section class="card">
+        <div class="card-head"><h2>Arquivos</h2></div>
+        ${filesPanel({ lead_id: l.id, compact: true })}
       </section>
       ${l.notes ? `<section class="card"><div class="card-head"><h2>Notas</h2></div><p class="pre">${esc(l.notes)}</p></section>` : ''}
     </div>

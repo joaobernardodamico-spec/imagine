@@ -8,6 +8,7 @@ import { pageHead, projectCard, kindTag, tabs } from './components.js';
 import { brandPanel, brandActions } from './brand.js';
 import { filesPanel, fileActions } from './files.js';
 import { newProjectModal } from './projects.js';
+import { inpiSeal, inpiField, socials } from './leadkit.js';
 
 const ORDER = ['cliente', 'ecossistema', 'imagine'];
 
@@ -62,6 +63,7 @@ function list() {
             <div class="acc-colors">${colors.slice(0, 4).map(c => `<span style="background:${esc(c.hex)}"></span>`).join('') || '<span></span>'}</div>
             <strong>${esc(a.name)}</strong>
             <small class="muted">${esc(a.segment || '')}</small>
+            ${a.kind === 'cliente' ? inpiSeal(a) : ''}
             <div class="acc-foot"><span>${ps.length} projeto${ps.length !== 1 ? 's' : ''}${act ? ` · ${act} ativo${act > 1 ? 's' : ''}` : ''}</span>${icon('arrow', 14)}</div>
           </a>`;
         }).join('')}</div>` : empty('Nenhuma conta aqui ainda')}
@@ -102,7 +104,8 @@ function detail({ id, tab }) {
       ${[['Contato', a.contact_name], ['E-mail', a.contact_email && `<a href="mailto:${esc(a.contact_email)}">${esc(a.contact_email)}</a>`, true],
         ['Telefone', a.contact_phone && `<a href="https://wa.me/55${esc(String(a.contact_phone).replace(/\D/g, ''))}" target="_blank" rel="noopener">${esc(a.contact_phone)}</a>`, true],
         ['Site', a.website && `<a href="${esc(safeUrl(a.website))}" target="_blank" rel="noopener">${esc(a.website)}</a>`, true],
-        ['Instagram', a.instagram], ['Segmento', a.segment], ['Observações', a.notes]]
+        ['Instagram', a.instagram], ['TikTok', a.tiktok], ['Facebook', a.facebook], ['Segmento', a.segment],
+        ['Marca no INPI', inpiSeal(a, { always: true }), true], ['Observações', a.notes]]
         .map(([k, v, raw]) => `<dt>${k}</dt><dd>${v ? (raw ? v : esc(v)) : '<span class="muted">—</span>'}</dd>`).join('')}
     </dl>${edit ? `<button class="btn btn-ghost btn-sm mt-16" data-act="editAccount" data-id="${esc(a.id)}">${icon('edit', 16)} Editar dados</button>` : ''}</section>`;
   } else if (tab === 'financeiro' && seesMoney()) {
@@ -129,7 +132,7 @@ function detail({ id, tab }) {
     <a href="#/contas" class="back">${icon('back', 16)} Contas</a>
     <header class="acc-head">
       <div>
-        ${kindTag(a.kind)}
+        <div class="row gap-8 wrap">${kindTag(a.kind)}${a.kind === 'cliente' ? inpiSeal(a, { always: true }) : ''}<span class="lsocs">${socials(a)}</span></div>
         <h1>${esc(a.name)}</h1>
         <p class="page-sub">${esc(a.segment || ACCOUNT_KINDS[a.kind].desc)}</p>
       </div>
@@ -154,6 +157,9 @@ function accountModal(a = {}) {
       { name: 'contact_phone', label: 'Telefone / WhatsApp', value: a.contact_phone },
       { name: 'website', label: 'Site', value: a.website },
       { name: 'instagram', label: 'Instagram', value: a.instagram },
+      { name: 'tiktok', label: 'TikTok', value: a.tiktok },
+      { name: 'facebook', label: 'Facebook', value: a.facebook },
+      inpiField(a.inpi),
       { name: 'notes', label: 'Observações', type: 'textarea', value: a.notes },
     ],
     danger: !isNew && isSocio() ? {
