@@ -829,3 +829,83 @@ body.in-combat .tip { z-index: 95; }
 }
 
 @media (min-width: 761px) { .combat-view { padding-top: 96px; } .score { top: 14px; } .combat-view .title { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: 10px; opacity: .7; } }
+
+/* ═════════════════════ v0.7: tela limpa, cartas maiores, visor e HUD da comp ═════════════════════ */
+:root { --cw: 118px; }
+/* fundo em evidência: painéis viram vidro leve, sem caixas pesadas */
+body:not(.menu)::after { background: radial-gradient(ellipse 75% 60% at 50% 45%, transparent 40%, rgba(2,7,6,.55) 100%), linear-gradient(180deg, rgba(2,7,6,.55) 0%, transparent 14%, transparent 70%, rgba(2,7,6,.8) 100%); }
+.pane::before, .pane::after { display: none; }
+.vira.pane, .heroplate.pane { background: rgba(2,10,9,.45); border-color: transparent; box-shadow: none; backdrop-filter: blur(4px); }
+.counter, body:not(.menu) .counter { background: linear-gradient(180deg, rgba(2,10,9,.15), rgba(2,10,9,.5)); border: 0; box-shadow: inset 0 -1px 0 rgba(67,240,208,.35); backdrop-filter: none; }
+.arena, body:not(.menu) .arena { background: radial-gradient(ellipse at 50% 70%, rgba(67,240,208,.08), transparent 70%); border-color: rgba(67,240,208,.12); box-shadow: none; }
+.arena::before { opacity: .15; }
+.label { opacity: .75; }
+.hud { background: linear-gradient(180deg, rgba(2,7,6,.75), transparent); }
+.portal { background: rgba(2,10,9,.35); border-color: rgba(67,240,208,.2); }
+.hand .card { --cw: 104px; }
+.card .nm { font-size: 15px; } .card .rk { font-size: 38px; bottom: 42px; }
+.card .atk, .card .hp { width: 32px; height: 32px; font-size: 16px; }
+.tip { display: none !important; }
+
+/* layout: mesa | palco | coluna da comp */
+.main, .main.nogrim { grid-template-columns: 70px 1fr 250px; }
+.rcol { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; padding-bottom: 8px; }
+.comphud { padding: 12px; border-radius: 8px; background: rgba(2,10,9,.62); border: 1px solid rgba(67,240,208,.18); backdrop-filter: blur(6px); }
+.ch-title { font: 700 11px var(--display); letter-spacing: .3em; text-transform: uppercase; color: var(--teal); margin-bottom: 8px; }
+.ch-sub { font: 600 9px var(--display); letter-spacing: .24em; text-transform: uppercase; color: var(--mute); margin: 12px 0 6px; }
+.ch-hand { padding: 10px; border-radius: 6px; background: rgba(67,240,208,.1); border: 1px solid var(--teal); box-shadow: 0 0 20px -8px var(--teal); }
+.ch-hand.none { background: rgba(255,255,255,.03); border-color: rgba(255,255,255,.1); box-shadow: none; }
+.ch-hand small { display: block; font: 600 9px var(--display); letter-spacing: .24em; text-transform: uppercase; color: var(--mute); }
+.ch-hand > b { display: block; font: 800 24px/1.1 var(--display); color: #8ffbe7; text-shadow: 0 0 14px rgba(67,240,208,.6); margin: 2px 0 8px; }
+.ch-hand.none > b { color: var(--ink); text-shadow: none; font-size: 18px; }
+.ch-hand .chip { width: 26px; height: 36px; } .ch-hand .chip b { font-size: 13px; } .ch-hand .chip .sym { width: 13px; height: 13px; }
+.ch-bonus { display: block; margin-top: 8px; font-size: 11px; color: var(--mute); line-height: 1.45; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pill { display: flex; align-items: center; gap: 7px; padding: 4px 12px 4px 4px; border-radius: 999px; background: rgba(40,48,50,.85); border: 1px solid rgba(255,255,255,.08); }
+.pill .pi { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #2a3a38, #0a1312); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+.pill .pi .sym, .pill .pi svg { width: 18px; height: 18px; }
+.pill > b { font: 800 15px var(--display); color: #fff; }
+.pill small { font-size: 10px; color: var(--mute); max-width: 96px; line-height: 1.2; }
+.pill.on { border-color: rgba(67,240,208,.5); } .pill.on > b { color: #8ffbe7; }
+.pill.gold > b { color: #ffe3a1; } .pill.off { opacity: .55; }
+.pill .rkp { font: 800 13px var(--display); color: var(--teal); }
+.pill .pa, .pill .ph { width: 14px; height: 14px; transform: rotate(45deg); border-radius: 3px; display: block; }
+.pill .pa { background: linear-gradient(135deg, #ffd56b, #c4800f); } .pill .ph { background: linear-gradient(135deg, #ff7f8c, #b31c33); }
+.comp-toggle { text-align: left; padding: 9px 12px; border-radius: 6px; border: 1px solid rgba(67,240,208,.18); background: rgba(2,10,9,.55); color: var(--teal); font: 700 11px var(--display); letter-spacing: .2em; text-transform: uppercase; }
+.comp-toggle small { font: 500 10px Sora; letter-spacing: 0; text-transform: none; color: var(--mute); margin-left: 4px; }
+.rcol .comp { padding: 8px; border-radius: 8px; background: rgba(2,10,9,.7); overflow: visible; }
+
+/* visor da carta, grande, à esquerda */
+#inspect { position: fixed; left: 84px; top: 50%; transform: translateY(-50%); z-index: 96; width: 300px; pointer-events: none;
+  border-radius: 14px; overflow: hidden; background: #050d0c; box-shadow: 0 0 0 2px var(--teal), 0 30px 80px rgba(0,0,0,.85); animation: inspin .16s ease-out; }
+@keyframes inspin { from { opacity: 0; transform: translateY(-50%) translateX(-12px); } }
+.in-art { height: 340px; background: center 22% / cover no-repeat; position: relative; }
+.in-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 60%, #050d0c); }
+.in-art.spell { display: grid; place-items: center; background: radial-gradient(circle, #3b2a7a, #0b0620 75%); color: var(--eter); }
+.in-art.spell svg { width: 140px; height: 140px; filter: drop-shadow(0 0 16px var(--eter)); }
+.in-body { padding: 4px 18px 18px; position: relative; }
+.in-top { display: flex; align-items: center; gap: 12px; margin-top: -26px; position: relative; }
+.in-rk { width: 52px; height: 52px; flex: none; display: grid; place-items: center; border-radius: 50%; background: #050d0c; border: 2px solid var(--realm, var(--teal));
+  font: 800 26px var(--display); color: #fff; text-shadow: 0 0 10px var(--realm, var(--teal)); }
+.in-top b { display: block; font: 700 24px/1.1 var(--serif); color: #fff; }
+.in-top small { font-size: 11px; color: var(--mute); display: flex; align-items: center; gap: 4px; } .in-top small .sym { width: 13px; height: 13px; }
+.in-body p { margin: 12px 0 0; font-size: 16px; line-height: 1.45; color: #e3fbf6; }
+.in-body p.in-kw { font-size: 12px; color: var(--mute); margin-top: 6px; }
+.in-body p.in-note { font-size: 12px; color: var(--gold); margin-top: 6px; } .in-body p.in-note.man { color: var(--teal); }
+.in-stats { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
+.in-a, .in-h { position: relative; width: 48px; height: 48px; display: grid; place-items: center; font: 800 22px var(--display); color: #fff; text-shadow: 0 1px 2px #000; }
+.in-a::before, .in-h::before { content: ''; position: absolute; inset: 6px; z-index: -1; transform: rotate(45deg); border-radius: 6px; }
+.in-a::before { background: linear-gradient(135deg, #ffd56b, #c4800f); } .in-h::before { background: linear-gradient(135deg, #ff7f8c, #b31c33); }
+.in-meta { font-size: 10px; color: var(--mute); text-align: center; }
+@media (max-height: 820px) { :root { --cw: 104px; } .hand .card { --cw: 94px; } .in-art { height: 270px; } }
+@media (max-width: 1200px) { .main, .main.nogrim { grid-template-columns: 70px 1fr 220px; } }
+@media (max-width: 760px) { .rcol { display: none; } #inspect { display: none !important; } .main, .main.nogrim { grid-template-columns: 1fr; } }
+/* v0.7 ajustes de altura */
+.stage { gap: 6px; }
+.arena { min-height: calc(var(--ch) + 24px); padding: 10px; }
+.counter { padding: 14px 14px 16px; }
+.hand { min-height: 0; padding: 4px; }
+.hand .card { --cw: 86px; }
+.portal { height: 96px; }
+body:not(.menu)::after { background: radial-gradient(ellipse 75% 55% at 50% 40%, transparent 35%, rgba(2,7,6,.6) 100%), linear-gradient(180deg, rgba(2,7,6,.55) 0%, transparent 14%, transparent 55%, rgba(2,7,6,.92) 78%, rgba(2,7,6,.98) 100%); }
+@media (max-height: 900px) { :root { --cw: 106px; } .hand .card { --cw: 80px; } .card .rk { font-size: 32px; bottom: 38px; } }

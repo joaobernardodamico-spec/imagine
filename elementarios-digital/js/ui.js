@@ -207,7 +207,9 @@ function render() {
           <div class="portal burn" data-drop="burn">${ICON.burn()}Queimar<br>Éter</div>
         </div>
       </section>
-      <aside class="comp pane">${compendiumHTML()}</aside>
+      <aside class="rcol"><div class="comphud">${compHudHTML()}</div>
+        <button class="comp-toggle" data-act="comptoggle">${UI.compOpen ? '▾' : '▸'} Compêndio <small>mãos e lacaios</small></button>
+        ${UI.compOpen ? `<div class="comp">${compendiumHTML()}</div>` : ''}</aside>
       ${UI.grim ? `<aside class="grim pane"><button class="grim-x" data-act="grim" title="Fechar">✕</button>${trackerHTML()}</aside>` : `<button class="grim-tab" data-act="grim" title="Abrir o Grimório (G)">${ICON.grim()}<span>Grimório</span></button>`}
     </div>
   </div>`;
@@ -224,6 +226,38 @@ function opponentsHTML() {
       <div class="bar"><i style="width:${Math.max(0, o.hp) / CONFIG.heroHp * 100}%"></i></div>
     </div>`;
   }).join('');
+}
+
+// ───────────────────────────── HUD da composição (o que a sua arena está bufando)
+function compHudHTML() {
+  const p = G.human, b = p.board;
+  const ph = evaluatePoker(b);
+  const pill = (icon, val, label, cls = '') => `<div class="pill ${cls}"><span class="pi">${icon}</span><b>${val}</b><small>${label}</small></div>`;
+  const atk = b.reduce((a, m) => a + m.atk, 0), hp = b.reduce((a, m) => a + m.hp, 0);
+  let html = `<div class="ch-title">Sua comp</div>
+    <div class="ch-hand ${ph.hand.rank ? '' : 'none'}"><small>Formação</small><b>${ph.hand.name}</b>${ph.cards.length ? `<span class="chips">${ph.cards.map(chipOf).join('')}</span>` : ''}
+      <span class="ch-bonus">${ph.hand.rank ? ph.hand.text : 'Monte pares, sequências ou flush na arena.'}</span></div>
+    <div class="pills">${pill('<i class="pa"></i>', atk, 'ataque')}${pill('<i class="ph"></i>', hp, 'vida')}</div>`;
+
+  const buffs = [];
+  const man = b.filter(m => m.tribe === G.manilha).length;
+  buffs.push(pill(`<b class="rkp">${rankLabel(G.manilha)}</b>`, `+${CONFIG.manilhaBuff}/+${CONFIG.manilhaBuff}`, `Manilha · ${TRIBES[G.manilha].name} ×${man}`, man ? 'on' : 'off'));
+  REALM_ORDER.forEach(r => { const n = realmCount(p, r); if (n) buffs.push(pill(rIcon(r), `${n}/5`, `${REALMS[r].name} · flush`, n >= 3 ? 'on' : '')); });
+  const royal = { deathrattle: ['Último Suspiro', 'paladino'], endTurn: ['Fim de Turno', 'rainha'], battlecry: ['Grito de Guerra', 'rei'] };
+  Object.entries(royal).forEach(([k, [name]]) => {
+    const n = b.filter(m => CARD_BY_ID[m.id] && CARD_BY_ID[m.id][k]).length;
+    const mult = royalMult(p, k);
+    if (n || mult > 1) buffs.push(pill(mult > 1 ? `<b class="rkp">×${mult}</b>` : '<b class="rkp">•</b>', n, name, mult > 1 ? 'on gold' : ''));
+  });
+  const rally = b.filter(m => CARD_BY_ID[m.id] && CARD_BY_ID[m.id].rally).length;
+  if (rally) buffs.push(pill('<b class="rkp">⚔</b>', rally, 'Conclamar'));
+  const divd = b.filter(m => CARD_BY_ID[m.id] && CARD_BY_ID[m.id].dividend).length;
+  if (divd) buffs.push(pill(ICON.coin(), `+${divd}`, 'dividendos/turno', 'gold'));
+  let reacts = 0; const used = new Set();
+  for (let i = 0; i + 1 < b.length; i++) { if (used.has(i) || used.has(i + 1) || b[i].realm === b[i + 1].realm) continue; if (REACTIONS[[b[i].realm, b[i + 1].realm].sort().join('|')]) { reacts++; used.add(i); used.add(i + 1); } }
+  if (reacts) buffs.push(pill(ICON.eter('var(--eter)'), reacts, 'reações elementais', 'on'));
+  html += `<div class="ch-sub">Mecânicas ativas</div><div class="pills">${buffs.join('')}</div>`;
+  return html;
 }
 
 // ───────────────────────────── Compêndio (HUD fixo: mãos + todas as cartas por nível)
@@ -684,6 +718,7 @@ document.addEventListener('click', e => {
     case 'end': SFX.click(); return endHumanTurn();
     case 'timer': UI.timerOn = !UI.timerOn; SFX.click(); return render();
     case 'grim': UI.grim = !UI.grim; SFX.click(); return render();
+    case 'comptoggle': UI.compOpen = !UI.compOpen; SFX.click(); return render();
     case 'ctier': UI.compTier = +el.dataset.t; SFX.click(); return render();
     case 'tab': UI.tab = el.dataset.tab; SFX.click(); return render();
     case 'ftier': UI.fTier = el.dataset.val; return render();
@@ -924,27 +959,47 @@ function dropCard(st, zone, x) {
   }
 }
 
-// ───────────────────────────── dica flutuante
-document.addEventListener('mouseover', e => {
-  const tip = $('#tip');
-  const el = e.target.closest('[data-card],[data-spell],[data-mago]');
-  if (!el || UI.drag || (!el.dataset.card && !el.dataset.spell && !el.dataset.mago)) { tip.hidden = true; return; }
+// ───────────────────────────── visor da carta: grande, à esquerda
+const KW_HELP = {
+  taunt: 'Provocar: inimigos precisam atacar esta carta primeiro.', shield: 'Escudo: ignora o primeiro dano.',
+  windfury: 'Fúria dos Ventos: ataca duas vezes.', reborn: 'Renascer: volta com 1 de vida ao morrer.',
+  poison: 'Veneno: destrói o que atingir.', magnetic: 'Magnetizar: funde-se a um Golem ao ser jogado.',
+};
+function showInspector(el) {
+  const ins = $('#inspect');
   let html = '';
-  if (el.dataset.mago) html = `<b>Mago</b><div class="m">Coringa · ${MAGO_COST} ouro</div>Ganha um feitiço aleatório e −1 Éter em todos os feitiços nesta rodada.`;
-  else if (el.dataset.spell) { const s = SPELL_BY_ID[el.dataset.spell]; html = `<b>${esc(s.name)}</b><div class="m">Feitiço · custo base ${etherText(s.cost)}</div>${esc(s.text)}`; }
-  else {
-    const c = CARD_BY_ID[el.dataset.card]; if (!c) { tip.hidden = true; return; }
+  if (el.dataset.mago) {
+    html = `<div class="in-art" style="background-image:url('assets/cards/mago.png')"></div><div class="in-body"><div class="in-top"><span class="in-rk">✦</span><div><b>Mago</b><small>Coringa · ${MAGO_COST} ouro</small></div></div>
+      <p>Ganha um feitiço aleatório e −1 Éter em todos os feitiços nesta rodada.</p></div>`;
+  } else if (el.dataset.spell) {
+    const sp = SPELL_BY_ID[el.dataset.spell];
+    html = `<div class="in-art spell">${ICON.sigil()}</div><div class="in-body"><div class="in-top"><span class="in-rk">✧</span><div><b>${esc(sp.name)}</b><small>Feitiço · ${etherText(sp.cost)}</small></div></div><p>${esc(sp.text)}</p></div>`;
+  } else {
+    const c = CARD_BY_ID[el.dataset.card]; if (!c) return hideInspector();
     const g = el.dataset.golden === '1';
-    html = `<b>${esc(c.name)}${g ? ' ✦' : ''}</b><div class="m">${TRIBES[c.tribe].name} de ${REALMS[c.realm].name} · Nível ${c.tier} · base ${c.atk}/${c.hp}</div>${esc(c.text)}
-      ${g ? '<div class="m" style="margin-top:4px">Dourado: atributos ×2, efeito dispara 2×.</div>' : ''}
-      ${c.tribe === G.manilha ? '<div class="m" style="margin-top:4px;color:#43f0d0">Manilha desta rodada: +2/+2 no combate.</div>' : ''}
-      ${G.human ? `<div class="m" style="margin-top:4px">Estoque ${G.pool[c.id]}/${COPIES_BY_TIER[c.tier]} · aparece ${pctText(shopOdds(G.human, c.id))}</div>` : ''}`;
+    const atk = el.querySelector('.atk') ? el.querySelector('.atk').textContent : c.atk;
+    const hp = el.querySelector('.hp') ? el.querySelector('.hp').textContent : c.hp;
+    const kws = [...el.querySelectorAll('.kw i')].map(i => i.title);
+    const kwKeys = Object.keys(KEYWORDS).filter(k => kws.includes(KEYWORDS[k].name));
+    html = `<div class="in-art" style="background-image:url('${c.art}');--realm:var(--${c.realm})"></div>
+      <div class="in-body" style="--realm:var(--${c.realm})">
+        <div class="in-top"><span class="in-rk">${rankLabel(c.tribe)}</span><div><b>${esc(c.name)}${g ? ' ✦' : ''}</b><small>${rIcon(c.realm)} ${TRIBES[c.tribe].name} de ${REALMS[c.realm].name} · Nível ${c.tier}</small></div></div>
+        <p>${esc(c.text)}</p>
+        ${kwKeys.map(k => `<p class="in-kw">${KW_HELP[k]}</p>`).join('')}
+        ${g ? '<p class="in-note">Dourada: atributos ×2 e efeito dispara 2×.</p>' : ''}
+        ${c.tribe === G.manilha ? '<p class="in-note man">Manilha desta rodada: +2/+2 no combate.</p>' : ''}
+        <div class="in-stats"><span class="in-a">${atk}</span><span class="in-meta">${G.human ? `estoque ${G.pool[c.id]}/${COPIES_BY_TIER[c.tier]} · aparece ${pctText(shopOdds(G.human, c.id))}` : ''}</span><span class="in-h">${hp}</span></div>
+      </div>`;
   }
-  tip.innerHTML = html; tip.hidden = false;
-  const r = el.getBoundingClientRect();
-  const left = r.right + 10 + 270 > innerWidth ? r.left - 280 : r.right + 10;
-  tip.style.left = Math.max(8, left) + 'px';
-  tip.style.top = Math.max(8, Math.min(innerHeight - 170, r.top)) + 'px';
+  ins.innerHTML = html; ins.hidden = false;
+}
+function hideInspector() { const ins = $('#inspect'); if (ins) ins.hidden = true; }
+document.addEventListener('mouseover', e => {
+  $('#tip').hidden = true;
+  if (PD.st && PD.st.on) return hideInspector();
+  const el = e.target.closest('.card[data-card], .card[data-spell], .card[data-mago], .c-card[data-card]');
+  if (!el || !el.closest('#app, .combat-view, #modal')) return hideInspector();
+  showInspector(el);
 });
 
 $('#modal').addEventListener('click', e => {
