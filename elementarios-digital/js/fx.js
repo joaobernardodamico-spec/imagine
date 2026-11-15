@@ -346,7 +346,7 @@ const FX = (() => {
         el.animate([{ transform: 'rotateY(90deg) translateY(-10px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 380, delay: 120 + newIdx++ * 70, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' });
       } else if (el === golden) {
         el.animate([{ transform: 'scale(.3)', opacity: 0, filter: 'brightness(4)' }, { transform: 'scale(1.25)', opacity: 1, filter: 'brightness(2)', offset: 0.6 }, { transform: 'none', filter: 'brightness(1)' }], { duration: 900, delay: 450, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' });
-        setTimeout(() => burst(el, REALM_HEX.gold, true), 750);
+        setTimeout(() => burst(el, '#b46bff', true), 750);
       } else {
         el.animate([{ transform: 'scale(.7) translateY(12px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 320, delay: newIdx++ * 40, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' });
       }

@@ -20,18 +20,18 @@ function simulateCombat(boardA, boardB, opts = {}) {
   }
 
   // ── contexto de efeitos em combate
-  function ctxFor(self, side) {
+  function ctxFor(self, side, pow = 1) {
     const allies = (realm, tribe) => S[side].filter(m => m !== self && m.hp > 0 && (!realm || m.realm === realm) && (!tribe || m.tribe === tribe));
     const ctx = {
       buff(m, a, h) { if (m) { m.atk += a; m.hp += h; } },
-      buffSelf(a, h) { if (self.hp > 0) ctx.buff(self, a, h); },
-      buffRandom(a, h) { const o = allies(); if (o.length) ctx.buff(rpick(o), a, h); },
-      buffAll(a, h, realm, tribe) { allies(realm, tribe).forEach(m => ctx.buff(m, a, h)); },
+      buffSelf(a, h) { if (self.hp > 0) ctx.buff(self, a * pow, h * pow); },
+      buffRandom(a, h) { const o = allies(); if (o.length) ctx.buff(rpick(o), a * pow, h * pow); },
+      buffAll(a, h, realm, tribe) { allies(realm, tribe).forEach(m => ctx.buff(m, a * pow, h * pow)); },
       giveKeyword(m, k) { if (m) m.kw.add(k); },
-      giveKeywordRandom(k) { const o = allies().filter(m => !m.kw.has(k)); if (o.length) rpick(o).kw.add(k); },
-      damageRandomEnemy(n) { const e = S[other(side)].filter(m => m.hp > 0); if (e.length) { const t = rpick(e); dealDamage(t, n); snap(`${self.name} causa ${n} em ${t.name}`, { def: t.cuid, src: self.cuid }); } },
-      damageAllEnemies(n) { S[other(side)].filter(m => m.hp > 0).forEach(t => dealDamage(t, n)); snap(`${self.name} causa ${n} em todos os inimigos`, { src: self.cuid }); },
-      summon(spec) { summonAt(side, self._deathIndex ?? S[side].length, spec); },
+      giveKeywordRandom(k) { for (let i = 0; i < pow; i++) { const o = allies().filter(m => !m.kw.has(k)); if (o.length) rpick(o).kw.add(k); } },
+      damageRandomEnemy(n) { n *= pow; const e = S[other(side)].filter(m => m.hp > 0); if (e.length) { const t = rpick(e); dealDamage(t, n); snap(`${self.name} causa ${n} em ${t.name}`, { def: t.cuid, src: self.cuid }); } },
+      damageAllEnemies(n) { n *= pow; S[other(side)].filter(m => m.hp > 0).forEach(t => dealDamage(t, n)); snap(`${self.name} causa ${n} em todos os inimigos`, { src: self.cuid }); },
+      summon(spec) { summonAt(side, self._deathIndex ?? S[side].length, { ...spec, atk: spec.atk * pow, hp: spec.hp * pow }); },
       // efeitos de recrutamento viram no-op no combate
       gainGold() {}, gainEther() {}, gainTreasury() {}, freeRerolls() {}, rerollFree() {}, burnRandomShop() {}, burnStrongestShopAbsorb() {},
     };
@@ -73,8 +73,8 @@ function simulateCombat(boardA, boardB, opts = {}) {
         m._deathIndex = i;
         const card = m.id ? CARD_BY_ID[m.id] : null;
         if (card && card.deathrattle) {
-          const times = (m.golden ? 2 : 1) * paladinMult(side);
-          for (let t = 0; t < times; t++) card.deathrattle(ctxFor(m, side));
+          const times = paladinMult(side);
+          for (let t = 0; t < times; t++) card.deathrattle(ctxFor(m, side, m.golden ? 2 : 1));
           snap(`Último Suspiro de ${m.name}${times > 1 ? ` (${times}×)` : ''}`);
         }
         if (m.kw.has('reborn')) {
@@ -116,7 +116,7 @@ function simulateCombat(boardA, boardB, opts = {}) {
       snap(`${side === 'A' ? (opts.sideA && opts.sideA.name) : (opts.sideB && opts.sideB.name)}: ${h.name}!`, { poker: h.id, pokerCards: ph.cards.map(m => m.cuid), side });
     }
     // Reis e outros efeitos de início de combate
-    [...arr].forEach(m => { const c = m.id && CARD_BY_ID[m.id]; if (c && c.startCombat) for (let t = 0; t < (m.golden ? 2 : 1); t++) c.startCombat(ctxFor(m, side)); });
+    [...arr].forEach(m => { const c = m.id && CARD_BY_ID[m.id]; if (c && c.startCombat) c.startCombat(ctxFor(m, side, m.golden ? 2 : 1)); });
   }
   snap('Manilha, formações e Reis aplicados');
 
@@ -151,12 +151,22 @@ function simulateCombat(boardA, boardB, opts = {}) {
   }
   resolveDeaths();
 
-  // ── quem começa
+  // ── quem começa: a Manilha decide. Naipe mais forte = reino do Vira (Paus), depois o ciclo até Ouros.
+  // Sem Manilha (ou mesmo naipe), vale a Sequência, depois quem tem mais cartas, depois a sorte.
+  const order = suitOrder();
+  const bestSuit = s => { const ms = S[s].filter(m => m.tribe === G.manilha); return ms.length ? Math.min(...ms.map(m => order.indexOf(m.realm))) : 9; };
   const airFirst = s => !!(pokerHand[s] && pokerHand[s].first);
-  let turn;
-  if (airFirst('A') !== airFirst('B')) turn = airFirst('A') ? 'A' : 'B';
-  else if (S.A.length !== S.B.length) turn = S.A.length > S.B.length ? 'A' : 'B';
-  else turn = rng() < 0.5 ? 'A' : 'B';
+  const sA = bestSuit('A'), sB = bestSuit('B');
+  let turn, why;
+  if (sA !== sB) { turn = sA < sB ? 'A' : 'B'; why = { kind: 'manilha', realm: order[Math.min(sA, sB)], suit: Math.min(sA, sB) }; }
+  else if (airFirst('A') !== airFirst('B')) { turn = airFirst('A') ? 'A' : 'B'; why = { kind: 'sequencia' }; }
+  else if (S.A.length !== S.B.length) { turn = S.A.length > S.B.length ? 'A' : 'B'; why = { kind: 'cartas' }; }
+  else { turn = rng() < 0.5 ? 'A' : 'B'; why = { kind: 'sorte' }; }
+  const firstName = turn === 'A' ? (opts.sideA && opts.sideA.name) : (opts.sideB && opts.sideB.name);
+  const whyText = why.kind === 'manilha' ? `Manilha de ${REALMS[why.realm].name} (${SUITS[why.suit].sym} ${SUITS[why.suit].name})`
+    : why.kind === 'sequencia' ? 'Sequência' : why.kind === 'cartas' ? 'mais cartas na arena' : 'sorteio';
+  if (S.A.length && S.B.length) snap(`Começa: ${firstName || turn} · ${whyText}`, { first: turn, why: whyText });
+  const firstTurn = turn;
 
   const next = { A: 0, B: 0 };
   let steps = 0;
@@ -175,7 +185,7 @@ function simulateCombat(boardA, boardB, opts = {}) {
       const target = rpick(taunts.length ? taunts : S[foe]);
       const card = attacker.id && CARD_BY_ID[attacker.id];
       if (card && card.rally) {
-        for (let t = 0; t < (attacker.golden ? 2 : 1); t++) card.rally(ctxFor(attacker, side));
+        card.rally(ctxFor(attacker, side, attacker.golden ? 2 : 1));
         snap(`Conclamar: ${attacker.name}`, { src: attacker.cuid });
       }
       if (target.hp <= 0) { resolveDeaths(); continue; }
@@ -195,5 +205,5 @@ function simulateCombat(boardA, boardB, opts = {}) {
   const winner = S.A.length && !S.B.length ? 'A' : S.B.length && !S.A.length ? 'B' : 'tie';
   const survivors = winner === 'A' ? S.A : winner === 'B' ? S.B : [];
   snap(winner === 'tie' ? 'Empate' : `Vitória de ${winner === 'A' ? (opts.sideA && opts.sideA.name) : (opts.sideB && opts.sideB.name)}`);
-  return { winner, survivors, frames, pokerHand };
+  return { winner, survivors, frames, pokerHand, first: firstTurn };
 }

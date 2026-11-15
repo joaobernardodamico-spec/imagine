@@ -8,6 +8,11 @@ const REALMS = {
   terra: { name: 'Terra', icon: '🌿', color: '#3fae4f' },
 };
 const REALM_ORDER = ['fogo', 'agua', 'ar', 'terra']; // ciclo elemental
+// Naipes do truco: o reino do Vira vira Paus (o mais forte) e o ciclo segue a partir dele.
+// Ex.: Vira de Água → Água é Paus, Ar é Copas, Terra é Espadas e Fogo é Ouros.
+const SUITS = [
+  { name: 'Paus', sym: '♣' }, { name: 'Copas', sym: '♥' }, { name: 'Espadas', sym: '♠' }, { name: 'Ouros', sym: '♦' },
+];
 
 // rank segue o baralho físico (Ás=1 … Rei=13)
 const TRIBES = {
@@ -56,6 +61,7 @@ const CARDS = [
   // ── NÍVEL 1 · BOBO (caos)
   { id: 'fogo-bobo', name: 'Sparky', realm: 'fogo', tribe: 'bobo', atk: 2, hp: 1,
     text: 'Grito de Guerra: queima uma carta aleatória da loja.',
+    evo: 'Grito de Guerra: queima duas cartas aleatórias da loja.',
     battlecry: c => c.burnRandomShop() },
   { id: 'agua-bobo', name: 'Bubble', realm: 'agua', tribe: 'bobo', atk: 1, hp: 3,
     text: 'Grito de Guerra: um aliado aleatório ganha +1/+2.',
@@ -76,6 +82,7 @@ const CARDS = [
     endTurn: c => c.gainEther('agua', 1) },
   { id: 'ar-goblin', name: 'Vennuk', realm: 'ar', tribe: 'goblin', atk: 2, hp: 1,
     text: 'Grito de Guerra: sua próxima renovação é grátis.',
+    evo: 'Grito de Guerra: suas próximas 2 renovações são grátis.',
     battlecry: c => c.freeRerolls(1) },
   { id: 'terra-goblin', name: 'Sneack', realm: 'terra', tribe: 'goblin', atk: 1, hp: 3, dividend: true,
     // vídeo do personagem: trechos em segundos (entrada no 1º ataque do combate, rugido nos seguintes)
@@ -92,6 +99,7 @@ const CARDS = [
     onBurn: c => { c.buffSelf(1, 1); c.buffRandom(1, 1); } },
   { id: 'ar-ladino', name: 'Vortex', realm: 'ar', tribe: 'ladino', atk: 3, hp: 2,
     text: 'Grito de Guerra: queima a carta mais forte da loja e ganha os atributos dela.',
+    evo: 'Grito de Guerra: queima as 2 cartas mais fortes da loja e ganha os atributos delas.',
     battlecry: c => c.burnStrongestShopAbsorb() },
   { id: 'terra-ladino', name: 'Fang', realm: 'terra', tribe: 'ladino', atk: 3, hp: 3,
     text: 'Sempre que você queima uma carta, ganha +1/+2.',
@@ -183,6 +191,7 @@ const CARDS = [
     battlecry: c => c.buffAll(2, 0) },
   { id: 'agua-dragao', name: 'Hydro', realm: 'agua', tribe: 'dragao', atk: 6, hp: 6, kw: ['shield'],
     text: 'Escudo. Grito de Guerra: concede Escudo a um aliado aleatório.',
+    evo: 'Escudo. Grito de Guerra: concede Escudo a dois aliados aleatórios.',
     battlecry: c => c.giveKeywordRandom('shield') },
   { id: 'ar-dragao', name: 'Kroonos', realm: 'ar', tribe: 'dragao', atk: 6, hp: 6,
     text: 'Grito de Guerra: aliados de Ar ganham +2/+2.',
@@ -193,36 +202,37 @@ const CARDS = [
 
   // ── NÍVEL 6 · PALADINO (Últimos Suspiros 2×)
   { id: 'fogo-paladino', name: 'Sr Berserker', realm: 'fogo', tribe: 'paladino', atk: 8, hp: 6, royal: 'deathrattle',
-    text: 'Seus Últimos Suspiros disparam 2× (dourado: 3×).' },
+    text: 'Seus Últimos Suspiros disparam 2× (EVO: 3×).' },
   { id: 'agua-paladino', name: 'Sr Astarion', realm: 'agua', tribe: 'paladino', atk: 7, hp: 7, royal: 'deathrattle', kw: ['shield'],
-    text: 'Escudo. Seus Últimos Suspiros disparam 2× (dourado: 3×).' },
+    text: 'Escudo. Seus Últimos Suspiros disparam 2× (EVO: 3×).' },
   { id: 'ar-paladino', name: 'Sr Cloudhammer', realm: 'ar', tribe: 'paladino', atk: 7, hp: 6, royal: 'deathrattle', kw: ['windfury'],
-    text: 'Fúria dos Ventos. Seus Últimos Suspiros disparam 2× (dourado: 3×).' },
+    text: 'Fúria dos Ventos. Seus Últimos Suspiros disparam 2× (EVO: 3×).' },
   { id: 'terra-paladino', name: 'Sr Granthor', realm: 'terra', tribe: 'paladino', atk: 6, hp: 9, royal: 'deathrattle', kw: ['taunt'],
-    text: 'Provocar. Seus Últimos Suspiros disparam 2× (dourado: 3×).' },
+    text: 'Provocar. Seus Últimos Suspiros disparam 2× (EVO: 3×).' },
 
   // ── NÍVEL 6 · RAINHA (Fim de Turno 2×)
   { id: 'fogo-rainha', name: 'Andromeda', realm: 'fogo', tribe: 'rainha', atk: 8, hp: 6, royal: 'endTurn',
-    text: 'Seus efeitos de Fim de Turno disparam 2× (dourada: 3×).' },
+    text: 'Seus efeitos de Fim de Turno disparam 2× (EVO: 3×).' },
   { id: 'agua-rainha', name: 'Coralyth', realm: 'agua', tribe: 'rainha', atk: 7, hp: 7, royal: 'endTurn', kw: ['shield'],
-    text: 'Escudo. Seus efeitos de Fim de Turno disparam 2× (dourada: 3×).' },
+    text: 'Escudo. Seus efeitos de Fim de Turno disparam 2× (EVO: 3×).' },
   { id: 'ar-rainha', name: 'Zephi', realm: 'ar', tribe: 'rainha', atk: 7, hp: 6, royal: 'endTurn', kw: ['windfury'],
-    text: 'Fúria dos Ventos. Seus efeitos de Fim de Turno disparam 2× (dourada: 3×).' },
+    text: 'Fúria dos Ventos. Seus efeitos de Fim de Turno disparam 2× (EVO: 3×).' },
   { id: 'terra-rainha', name: 'Savhana', realm: 'terra', tribe: 'rainha', atk: 6, hp: 9, royal: 'endTurn', kw: ['taunt'],
-    text: 'Provocar. Seus efeitos de Fim de Turno disparam 2× (dourada: 3×).' },
+    text: 'Provocar. Seus efeitos de Fim de Turno disparam 2× (EVO: 3×).' },
 
   // ── NÍVEL 7 · REI (Gritos de Guerra 2× + efeito do reino)
   { id: 'fogo-rei', name: 'Pyro', realm: 'fogo', tribe: 'rei', atk: 9, hp: 8, royal: 'battlecry',
-    text: 'Seus Gritos de Guerra disparam 2×. Início do recrutamento: queima a carta mais forte da loja e ganha os atributos dela.',
+    text: 'Seus Gritos de Guerra disparam 2× (EVO: 3×). Início do recrutamento: queima a carta mais forte da loja e ganha os atributos dela.',
+    evo: 'Seus Gritos de Guerra disparam 3×. Início do recrutamento: queima as 2 cartas mais fortes da loja e ganha os atributos delas.',
     startRecruit: c => c.burnStrongestShopAbsorb() },
   { id: 'agua-rei', name: 'Neptulon', realm: 'agua', tribe: 'rei', atk: 8, hp: 9, royal: 'battlecry',
-    text: 'Seus Gritos de Guerra disparam 2×. Fim de Turno: aliados de Água ganham +2/+2.',
+    text: 'Seus Gritos de Guerra disparam 2× (EVO: 3×). Fim de Turno: aliados de Água ganham +2/+2.',
     endTurn: c => c.buffAll(2, 2, 'agua') },
   { id: 'ar-rei', name: 'Ventuus', realm: 'ar', tribe: 'rei', atk: 9, hp: 8, royal: 'battlecry', kw: ['windfury'],
-    text: 'Fúria dos Ventos. Seus Gritos de Guerra disparam 2×. Início do combate: aliados de Ar ganham +3 de ataque.',
+    text: 'Fúria dos Ventos. Seus Gritos de Guerra disparam 2× (EVO: 3×). Início do combate: aliados de Ar ganham +3 de ataque.',
     startCombat: c => c.buffAll(3, 0, 'ar') },
   { id: 'terra-rei', name: 'Marcus Aurelius', realm: 'terra', tribe: 'rei', atk: 8, hp: 10, royal: 'battlecry', kw: ['taunt'],
-    text: 'Provocar. Seus Gritos de Guerra disparam 2×. Início do combate: aliados de Terra ganham +4 de vida.',
+    text: 'Provocar. Seus Gritos de Guerra disparam 2× (EVO: 3×). Início do combate: aliados de Terra ganham +4 de vida.',
     startCombat: c => c.buffAll(0, 4, 'terra') },
 ];
 
@@ -232,6 +242,17 @@ CARDS.forEach(c => {
   c.art = `assets/cards/${c.realm}-${TRIBES[c.tribe].file}.jpg`;
 });
 const CARD_BY_ID = Object.fromEntries(CARDS.map(c => [c.id, c]));
+
+// EVO (trinca: 3 cópias viram 1): atributos ×2 e o efeito dobra.
+function evoText(c) {
+  if (c.evo) return c.evo;
+  let t = c.text.replace(/\s*\(EVO: 3×\)/, '');
+  if (c.royal) t = t.replace(/disparam 2×/, 'disparam 3×');
+  return t.replace(/\+(\d+)/g, (_, n) => '+' + n * 2)
+    .replace(/(^|[^+\d])(\d+)\/(\d+)/g, (_, a, x, y) => `${a}${x * 2}/${y * 2}`)
+    .replace(/(\d+) de dano/g, (_, n) => `${n * 2} de dano`)
+    .replace(/custam (\d+) Éter/, (_, n) => `custam ${n * 2} Éter`);
+}
 
 // ── FEITIÇOS (custam Éter). target: 'minion' pede um alvo no seu tabuleiro.
 const SPELLS = [
@@ -250,7 +271,7 @@ const SPELLS = [
   { id: 'raiz', name: 'Raiz', cost: { terra: 2 }, target: 'minion',
     text: '+1/+3 e Provocar em um lacaio.', cast: (c, t) => { c.buff(t, 1, 3); c.giveKeyword(t, 'taunt'); } },
   { id: 'ascensao', name: 'Ascensão', cost: { terra: 4, ar: 3 }, target: 'minion', needsNonGolden: true,
-    text: 'Transforma um lacaio na versão dourada.', cast: (c, t) => c.makeGolden(t) },
+    text: 'Evolui um lacaio para a versão EVO.', cast: (c, t) => c.makeGolden(t) },
   { id: 'transmutar', name: 'Transmutar', cost: { fogo: 1, agua: 1, ar: 1, terra: 1 }, target: 'minion',
     text: 'Muda o reino de um lacaio para o reino do Vira e dá +2/+2.', cast: (c, t) => { c.setRealm(t, c.viraRealm()); c.buff(t, 2, 2); } },
 ];
@@ -309,6 +330,8 @@ const CONFIG = {
   startGold: 3,
   maxGold: 10,
   minionCost: 2,
+  manilhaCost: 3,  // a Manilha sempre custa 3
+  freezeCardEther: 1, // congelar uma carta: 1 Éter do reino dela
   rerollCost: 1,
   shopBurnCost: 1,
   boardSize: 7,

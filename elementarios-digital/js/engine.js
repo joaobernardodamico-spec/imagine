@@ -56,7 +56,7 @@ function makePlayer(id, name, isHuman, heroId) {
     tier: 1, upgradeCost: UPGRADE_COST[2], gold: 0, treasury: 0, lastInterest: 0,
     ether: { fogo: 0, agua: 0, ar: 0, terra: 0 },
     board: [], hand: [], shop: [], spellShop: [],
-    freeRerolls: 0, pinsUsed: 0, firstBuyDone: false, heroUsed: false, terraPlayed: 0, spellDiscountRound: 0,
+    freeRerolls: 0, firstBuyDone: false, heroUsed: false, terraPlayed: 0, spellDiscountRound: 0,
     stats: { bought: 0, sold: 0, burned: 0, spells: 0, triples: 0, rerolls: 0, goldSpent: 0, ups: 0 },
     roundStats: null,
     networth: [], lastOpp: null, lastResult: null, wishlist: new Set(), ghostBoard: [] };
@@ -76,6 +76,9 @@ function revealVira() {
   G.vira = { tribe: TRIBE_BY_RANK[rank], realm: pick(REALM_ORDER) };
   G.manilha = TRIBE_BY_RANK[(rank % 13) + 1];
 }
+// Ordem dos naipes nesta rodada: começa no reino do Vira (Paus) e segue o ciclo até Ouros.
+function suitOrder() { const i = REALM_ORDER.indexOf(G.vira.realm); return [0, 1, 2, 3].map(k => REALM_ORDER[(i + k) % 4]); }
+const suitRank = realm => suitOrder().indexOf(realm); // 0 = Paus (mais forte) … 3 = Ouros
 
 // ───────────────────────────── rodada
 function startRound() {
@@ -89,7 +92,7 @@ function startRound() {
     p.lastInterest = interest;
     p.gold = base + p.treasury + interest;
     p.treasury = 0;
-    p.pinsUsed = 0; p.firstBuyDone = false; p.heroUsed = false; p.spellDiscountRound = 0;
+    p.firstBuyDone = false; p.heroUsed = false; p.spellDiscountRound = 0;
     p.roundStats = { bought: 0, sold: 0, burned: 0, spells: 0, rerolls: 0, goldStart: p.gold };
     rollShop(p, true);
     log(p, 'round', `Rodada ${G.round} · Vira: ${TRIBES[G.vira.tribe].name} de ${REALMS[G.vira.realm].name} → Manilha: ${TRIBES[G.manilha].name}` +
@@ -118,31 +121,32 @@ function drawFromPool(p, filter) {
 
 function returnToPool(cardId, n = 1) { G.pool[cardId] = Math.min(COPIES_BY_TIER[CARD_BY_ID[cardId].tier], G.pool[cardId] + n); }
 
+// Congelar: frozen = 'all' (Taverna inteira, grátis, cai ao renovar) ou 'card' (1 carta, 1 Éter do reino, sobrevive à renovação).
+// Na rodada seguinte as congeladas continuam na loja e descongelam.
 function rollShop(p, newRound = false) {
   const kept = [];
   for (const s of p.shop) {
-    if (s.pinned) { if (newRound) s.pinned = false; kept.push(s); }
+    const keep = newRound ? !!s.frozen : s.frozen === 'card';
+    if (keep) { if (newRound) { s.frozen = false; s.paid = null; } kept.push(s); }
     else returnToPool(s.id);
   }
   p.shop = kept;
   const slots = SHOP_SLOTS_BY_TIER[p.tier];
   if (p.shop.length < slots && TRIBES[G.manilha].tier <= p.tier && !p.shop.some(s => CARD_BY_ID[s.id].tribe === G.manilha)) {
     const id = drawFromPool(p, c => c.tribe === G.manilha);
-    if (id) p.shop.push({ uid: UID++, id, pinned: false, manilha: true });
+    if (id) p.shop.push({ uid: UID++, id, frozen: false, manilha: true });
   }
   while (p.shop.length < slots) {
     const id = drawFromPool(p);
     if (!id) break;
-    p.shop.push({ uid: UID++, id, pinned: false });
+    p.shop.push({ uid: UID++, id, frozen: false });
   }
   p.spellShop = [{ uid: UID++, mago: true }, { uid: UID++, spell: pick(SPELLS).id }];
 }
 
+// Preço fixo: lacaio 2, Manilha 3. Só o Anel da Maré (Feiticeiro da Água) dá desconto.
 function minionCost(p, cardId) {
-  let cost = CONFIG.minionCost;
-  if (CONFIG.highTierCost && CARD_BY_ID[cardId].tier >= 6) cost = 3;
-  const contested = G.players.some(o => o !== p && o.alive && [...o.board, ...o.hand].some(m => m.id === cardId));
-  if (contested) cost += 1;
+  let cost = CARD_BY_ID[cardId].tribe === G.manilha ? CONFIG.manilhaCost : CONFIG.minionCost;
   if (hasHero(p, 'h-agua') && !p.firstBuyDone) cost -= 1;
   return Math.max(0, cost);
 }
@@ -189,17 +193,33 @@ const ACTIONS = {
     return m;
   },
 
-  pin(p, shopUid) {
+  // Congelar a Taverna inteira (grátis). Clicar de novo descongela.
+  freeze(p) {
+    const loose = p.shop.filter(s => !s.frozen);
+    if (loose.length) { loose.forEach(s => { s.frozen = 'all'; }); log(p, 'freeze', 'Congelou a Taverna'); return 'on'; }
+    const all = p.shop.filter(s => s.frozen === 'all');
+    if (!all.length) return false;
+    all.forEach(s => { s.frozen = false; });
+    log(p, 'freeze', 'Descongelou a Taverna');
+    return 'off';
+  },
+
+  // Congelar uma carta específica: 1 Éter do reino dela. Sobrevive à renovação.
+  freezeCard(p, shopUid) {
     const s = p.shop.find(x => x.uid === shopUid);
     if (!s) return false;
-    if (s.pinned) { s.pinned = false; return true; }
-    const cost = p.pinsUsed === 0 ? 0 : 1;
-    if (p.gold < cost) return false;
-    if (cost) spend(p, cost);
-    p.pinsUsed++;
-    s.pinned = true;
-    log(p, 'pin', `Fixou ${CARD_BY_ID[s.id].name}${cost ? ' (1💰)' : ' (grátis)'}`);
-    return true;
+    const c = CARD_BY_ID[s.id];
+    if (s.frozen === 'card') {
+      s.frozen = false;
+      if (s.paid) { p.ether[s.paid] += CONFIG.freezeCardEther; s.paid = null; }
+      log(p, 'freeze', `Descongelou ${c.name} (Éter devolvido)`);
+      return 'off';
+    }
+    if (p.ether[c.realm] < CONFIG.freezeCardEther) return false;
+    p.ether[c.realm] -= CONFIG.freezeCardEther;
+    s.frozen = 'card'; s.paid = c.realm;
+    log(p, 'freeze', `Congelou ${c.name} (${CONFIG.freezeCardEther} Éter ${REALMS[c.realm].icon})`);
+    return 'on';
   },
 
   burnShop(p, shopUid) {
@@ -264,7 +284,7 @@ const ACTIONS = {
     p.gold += value;
     if (!m.noPool) returnToPool(m.id, m.golden ? 3 : 1);
     p.stats.sold++; p.roundStats.sold++;
-    log(p, 'sell', `Vendeu ${m.name}${m.golden ? ' (dourado)' : ''} por ${value}💰`);
+    log(p, 'sell', `Vendeu ${m.name}${m.golden ? ' EVO' : ''} por ${value}💰`);
     if (cardOf(m).onSell) fireHook(p, m, 'onSell');
     return true;
   },
@@ -363,7 +383,7 @@ const ACTIONS = {
     g.atk += Math.max(0, extraA); g.hp += Math.max(0, extraH); g.kw = [...kws];
     if (boardIdx >= 0) p.board.splice(boardIdx, 0, g); else p.hand.push(g);
     p.stats.triples++;
-    log(p, 'triple', `Fundiu 3× ${base.name} → ${base.name} DOURADO`);
+    log(p, 'triple', `Trinca: 3× ${base.name} → ${base.name} EVO`);
     return discoverOptions(p);
   },
 
@@ -484,34 +504,38 @@ function royalMult(p, kind) {
 function fireHook(p, m, hook) {
   const fn = cardOf(m)[hook];
   if (!fn) return;
-  let times = m.golden ? 2 : 1;
+  // Realeza (Rei/Rainha) repete o efeito; EVO dobra a força dele (pow 2).
+  let times = 1;
   if (hook === 'battlecry') times *= royalMult(p, 'battlecry');
   if (hook === 'endTurn') times *= royalMult(p, 'endTurn');
-  for (let i = 0; i < times; i++) fn(recruitCtx(p, m));
+  for (let i = 0; i < times; i++) fn(recruitCtx(p, m, m.golden ? 2 : 1));
 }
 
-function recruitCtx(p, self) {
+function recruitCtx(p, self, pow = 1) {
   const others = (realm, tribe) => p.board.filter(m => m !== self && (!realm || m.realm === realm) && (!tribe || m.tribe === tribe));
+  const twice = f => { for (let i = 0; i < pow; i++) f(); };
   const ctx = {
     buff(m, a, h) { if (m) { m.atk += a; m.hp += h; } },
-    buffSelf(a, h) { ctx.buff(self, a, h); },
-    buffRandom(a, h) { const o = others(); if (o.length) ctx.buff(pick(o), a, h); },
-    buffAll(a, h, realm, tribe) { others(realm, tribe).forEach(m => ctx.buff(m, a, h)); },
+    buffSelf(a, h) { ctx.buff(self, a * pow, h * pow); },
+    buffRandom(a, h) { const o = others(); if (o.length) ctx.buff(pick(o), a * pow, h * pow); },
+    buffAll(a, h, realm, tribe) { others(realm, tribe).forEach(m => ctx.buff(m, a * pow, h * pow)); },
     giveKeyword(m, k) { if (m && !m.kw.includes(k)) m.kw.push(k); },
-    giveKeywordRandom(k) { const o = others().filter(m => !m.kw.includes(k)); if (o.length) ctx.giveKeyword(pick(o), k); },
-    gainGold(n) { p.gold += n; },
-    gainEther(r, n) { p.ether[r] += n; },
-    gainTreasury(n) { p.treasury += n; },
-    freeRerolls(n) { p.freeRerolls += n; },
+    giveKeywordRandom(k) { twice(() => { const o = others().filter(m => !m.kw.includes(k)); if (o.length) ctx.giveKeyword(pick(o), k); }); },
+    gainGold(n) { p.gold += n * pow; },
+    gainEther(r, n) { p.ether[r] += n * pow; },
+    gainTreasury(n) { p.treasury += n * pow; },
+    freeRerolls(n) { p.freeRerolls += n * pow; },
     rerollFree() { rollShop(p); },
-    burnRandomShop() {
-      const s = p.shop.filter(x => !x.pinned); if (!s.length) return;
+    burnRandomShop() { twice(() => ctx._burnRandom()); },
+    burnStrongestShopAbsorb() { twice(() => ctx._burnStrongest()); },
+    _burnRandom() {
+      const s = p.shop.filter(x => !x.frozen); if (!s.length) return;
       const t = pick(s); p.shop = p.shop.filter(x => x !== t); returnToPool(t.id);
       const c = CARD_BY_ID[t.id]; p.ether[c.realm] += 1; afterBurn(p, c.realm);
       log(p, 'burn', `${self ? self.name : 'Efeito'} queimou ${c.name} da loja (+1 Éter ${REALMS[c.realm].icon})`);
     },
-    burnStrongestShopAbsorb() {
-      const s = p.shop.filter(x => !x.pinned); if (!s.length || !self) return;
+    _burnStrongest() {
+      const s = p.shop.filter(x => !x.frozen); if (!s.length || !self) return;
       const t = s.reduce((a, b) => (CARD_BY_ID[b.id].atk + CARD_BY_ID[b.id].hp > CARD_BY_ID[a.id].atk + CARD_BY_ID[a.id].hp ? b : a));
       p.shop = p.shop.filter(x => x !== t); returnToPool(t.id);
       const c = CARD_BY_ID[t.id]; self.atk += c.atk; self.hp += c.hp;
@@ -544,9 +568,9 @@ function networth(p) {
 function shopOdds(p, cardId) {
   const c = CARD_BY_ID[cardId];
   if (c.tier > p.tier || G.pool[cardId] <= 0) return 0;
-  const pinned = p.shop.filter(s => s.pinned).length;
+  const frozen = p.shop.filter(s => s.frozen === 'card').length; // só as pagas sobrevivem à renovação
   const manilhaOn = TRIBES[G.manilha].tier <= p.tier;
-  const slots = Math.max(0, SHOP_SLOTS_BY_TIER[p.tier] - pinned - (manilhaOn ? 1 : 0));
+  const slots = Math.max(0, SHOP_SLOTS_BY_TIER[p.tier] - frozen - (manilhaOn ? 1 : 0));
   let W = 0;
   CARDS.forEach(x => { W += shopWeight(p, x.id); });
   const w = shopWeight(p, cardId);

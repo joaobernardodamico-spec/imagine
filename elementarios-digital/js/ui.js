@@ -2,7 +2,7 @@
 
 const $ = s => document.querySelector(s);
 const app = $('#app');
-const UI = { tab: 'estoque', fTier: 'meu', fRealm: null, fTribe: null, onlyWish: false, targeting: null,
+const UI = { tab: 'comb', fTier: 'meu', fRealm: null, fTribe: null, onlyWish: false, targeting: null,
   timer: 0, timerMax: 30, timerOn: true, interval: null, speed: 1, drag: null, phase: 'menu', grim: false };
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -24,6 +24,7 @@ const ICON = {
   grim: () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18M7 8h4M7 12h4M7 16h4"/></svg>`,
   sound: on => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>${on ? '<path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>' : '<path d="M17 9l5 6M22 9l-5 6"/>'}</svg>`,
   pause: on => (on ? `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>` : `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12-7.5z"/></svg>`),
+  snow: () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7"/><path d="M9.5 3.8L12 6l2.5-2.2M9.5 20.2L12 18l2.5 2.2M4.6 10.6l3.1-.8-.8-3.1M19.4 13.4l-3.1.8.8 3.1M4.6 13.4l3.1.8-.8 3.1M19.4 10.6l-3.1-.8.8-3.1"/></svg>`,
   pin: () => `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 2l7 7-2 1-4 4 .5 5-1.5 1.5-4.5-4.5L4 22l-1-1 5.5-6.5L4 10l1.5-1.5 5 .5 4-4z"/></svg>`,
   reroll: () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 11a8 8 0 0 0-14.5-4.5L3 9M4 13a8 8 0 0 0 14.5 4.5L21 15"/><path d="M3 4v5h5M21 20v-5h-5"/></svg>`,
   up: () => `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l7 9h-4v5H9v-5H5z"/><path d="M8 18h8l-1 4H9z" opacity=".6"/></svg>`,
@@ -79,7 +80,7 @@ function toast(msg) {
 function minionCard(m, zone, extra = {}) {
   const c = CARD_BY_ID[m.id];
   const kws = (m.kw instanceof Set ? [...m.kw] : m.kw || []);
-  const classes = ['card', zone, extra.sm ? 'sm' : '', m.golden ? 'golden' : '', kws.includes('shield') ? 'shield' : '', kws.includes('taunt') ? 'taunt' : '',
+  const classes = ['card', zone, extra.sm ? 'sm' : '', m.golden ? 'golden' : '', extra.trioReady ? 'trio-ready' : '', kws.includes('shield') ? 'shield' : '', kws.includes('taunt') ? 'taunt' : '',
     m.tribe === G.manilha && zone !== 'disc' ? 'manilha' : '', extra.cls || ''].join(' ');
   const mult = m.golden ? 2 : 1;
   const baseA = c ? c.atk * mult : m.atk, baseH = c ? c.hp * mult : m.hp;
@@ -88,7 +89,7 @@ function minionCard(m, zone, extra = {}) {
   const sv = SELL_VALUE_BY_TIER[m.tier] + (m.golden ? 1 : 0);
   let acts = '';
   if (zone === 'hand') acts = `<div class="acts"><button data-act="play" data-uid="${m.uid}">Jogar</button><button class="b-sell" data-act="sell" data-uid="${m.uid}">Vender +${sv}</button><button class="b-burn" data-act="burn" data-uid="${m.uid}">Queimar +${m.golden ? 3 : 1} Éter</button></div>`;
-  if (zone === 'board' && !UI.targeting) acts = `<div class="acts"><div class="mv"><button data-act="left" data-uid="${m.uid}" title="Mover para a esquerda">◀</button><button data-act="right" data-uid="${m.uid}" title="Mover para a direita">▶</button></div><button class="b-sell" data-act="sell" data-uid="${m.uid}">Vender +${sv}</button><button class="b-burn" data-act="burn" data-uid="${m.uid}">Queimar +${m.golden ? 3 : 1} Éter</button></div>`;
+  if (zone === 'board' && !UI.targeting) acts = `<div class="acts"><button class="b-sell" data-act="sell" data-uid="${m.uid}">Vender +${sv}</button><button class="b-burn" data-act="burn" data-uid="${m.uid}">Queimar +${m.golden ? 3 : 1} Éter</button></div>`;
   const dmg = extra.dmg ? `<div class="dmg">-${extra.dmg}</div>` : '';
   const draggable = '';
   const act = extra.act ? `data-act="${extra.act}"` : '';
@@ -99,20 +100,25 @@ function minionCard(m, zone, extra = {}) {
     ${c && c.dividend ? '<div class="div" title="Dividendos">+$</div>' : ''}
     <div class="kw">${kwIcons}</div>
     ${m.tribe === G.manilha && zone !== 'disc' ? '<div class="flame"></div>' : ''}
-    ${m.tribe ? `<div class="rk">${rankLabel(m.tribe)}</div>` : ''}<div class="nm">${esc(m.name)}${m.golden ? ' ✦' : ''}</div>
+    ${m.golden ? '<div class="evo-ring"></div><div class="evo-tag">EVO</div>' : ''}
+    ${extra.trio ? `<div class="trio ${extra.trioReady ? 'ready' : ''}" title="${extra.trioReady ? 'Comprando esta, você faz a EVO (3 cópias)' : 'Cópias que você tem para a EVO'}">${extra.trio}</div>` : ''}
+    ${m.tribe ? `<div class="rk">${rankLabel(m.tribe)}</div>` : ''}<div class="nm">${esc(m.name)}</div>
     <div class="atk ${m.atk > baseA ? 'buffed' : ''}">${m.atk}</div><div class="hp ${m.hp < baseH ? 'hurt' : m.hp > baseH ? 'buffed' : ''}">${Math.max(0, m.hp)}</div>${acts}${dmg}${extra.after || ''}</div>`;
 }
 
-function shopCard(p, s) {
+function shopCard(p, s, owned = {}) {
   const c = CARD_BY_ID[s.id];
   const cost = minionCost(p, s.id);
-  const contested = isContested(p, s.id);
   const m = { ...c, uid: s.uid, golden: false };
-  const cls = [p.wishlist.has(s.id) ? 'wish' : '', s.pinned ? 'pinned' : ''].join(' ');
-  return minionCard(m, 'shop', { cls, act: 'buy', after:
-    `<div class="cost ${contested ? 'up' : ''}" title="${contested ? 'Disputada: outro jogador tem cópias (+1)' : ''}">${ICON.coin()}${cost}</div>
-     <button class="pin ${s.pinned ? 'on' : ''}" data-act="pin" data-uid="${s.uid}" title="Fixar na loja (1ª grátis por rodada)">${ICON.pin()}</button>
-     <div class="acts"><button data-act="buy" data-uid="${s.uid}">Comprar</button><button class="b-burn" data-act="burnshop" data-uid="${s.uid}">Queimar · 1 ouro</button></div>` });
+  const have = owned[s.id] || 0;
+  const cls = [p.wishlist.has(s.id) ? 'wish' : '', s.frozen ? 'frozen' : '', s.frozen === 'card' ? 'frozen-card' : ''].join(' ');
+  // lacaio custa sempre 2: o preço só aparece quando foge disso (Manilha 3, desconto do Anel)
+  const odd = cost !== CONFIG.minionCost;
+  const why = c.tribe === G.manilha ? 'Manilha: custa 3' : 'Anel da Maré: 1ª compra da rodada mais barata';
+  return minionCard(m, 'shop', { cls, act: 'buy', trio: have ? (have >= 2 ? 'EVO' : `${have}/3`) : '', trioReady: have >= 2, after:
+    `${odd ? `<div class="cost ${cost > CONFIG.minionCost ? 'up' : 'down'}" title="${why}">${ICON.coin()}${cost}</div>` : ''}
+     ${s.frozen ? '<div class="ice"></div>' : ''}
+     <button class="frz ${s.frozen === 'card' ? 'on' : ''}" data-act="freezecard" data-uid="${s.uid}" title="${s.frozen === 'card' ? 'Descongelar (devolve o Éter)' : `Congelar só esta carta · ${CONFIG.freezeCardEther} Éter de ${REALMS[c.realm].name}`}">${ICON.snow()}</button>` });
 }
 
 function spellCard(p, item, zone) {
@@ -135,13 +141,17 @@ function render() {
   const p = G.human;
   const hero = HEROES.find(h => h.id === p.hero);
   const canHero = !p.heroUsed && hero.kind === 'ativo' && p.gold >= hero.cost;
-  const triples = triplesAvailable(p);
   const viraCard = CARDS.find(c => c.tribe === G.vira.tribe && c.realm === G.vira.realm);
   const shopSlots = SHOP_SLOTS_BY_TIER[p.tier];
   if (UI.targeting && !p.hand.some(x => x.uid === UI.targeting)) UI.targeting = null;
   const income = Math.min(CONFIG.maxGold, CONFIG.startGold + G.round - 1);
   const circ = 2 * Math.PI * 20;
   const frac = UI.timerMax ? UI.timer / UI.timerMax : 1;
+  const owned = {};
+  [...p.board, ...p.hand].forEach(m => { if (!isSpell(m) && !m.golden) owned[m.id] = (owned[m.id] || 0) + 1; });
+  const trioOf = m => (!m.golden && owned[m.id] === 2 ? { trio: '2/3' } : {});
+  const shopFrozen = p.shop.some(s => s.frozen === 'all');
+  hideInspector();
 
   app.innerHTML = `
   <div class="game">
@@ -155,7 +165,6 @@ function render() {
         ${REALM_ORDER.map(r => `<div class="gem eth" id="hud-ether-${r}" title="Éter de ${REALMS[r].name}" style="color:${realmVar(r)}">${rIcon(r)}<span style="color:var(--ink)">${p.ether[r]}</span></div>`).join('')}
       </div>
       <div class="hud-right">
-        <button class="btn icon" data-act="livro" title="Livro da Partida">${ICON.book()}</button>
         <button class="btn icon ${UI.grim ? 'on' : ''}" data-act="grim" title="Grimório (G)">${ICON.grim()}</button>
         <button class="btn icon" data-act="sound" title="Som">${ICON.sound(!SFX.muted)}</button>
         <button class="btn icon" data-act="timer" title="Pausar o tempo">${ICON.pause(UI.timerOn)}</button>
@@ -188,29 +197,27 @@ function render() {
           <div class="label" style="flex:1">Taverna · Nível ${p.tier}</div>
           <div class="tiers" title="Nível da Taverna">${[1, 2, 3, 4, 5, 6, 7].map(t => `<i class="${t <= p.tier ? 'on' : ''}"></i>`).join('')}</div>
           <button class="btn sm" data-act="reroll">${ICON.reroll().replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px;margin-right:5px"')}Renovar · ${p.freeRerolls ? 'grátis' : CONFIG.rerollCost}<kbd>R</kbd></button>
+          <button class="btn sm ice ${shopFrozen ? 'on' : ''}" data-act="freeze" title="Congela a Taverna inteira para a próxima rodada (grátis). Renovar descongela.">${ICON.snow().replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px;margin-right:5px"')}${shopFrozen ? 'Congelada' : 'Congelar'}<kbd>F</kbd></button>
           <button class="btn sm gold" id="btn-up" data-act="upgrade" ${p.tier >= 7 ? 'disabled' : ''}>${ICON.up().replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px;margin-right:5px"')}Nível ${Math.min(7, p.tier + 1)} · ${p.upgradeCost}<kbd>U</kbd></button>
         </div>
-        <div class="counter">
-          <div class="shoprow">${p.shop.map(s => shopCard(p, s)).join('')}${'<div class="slot-empty"></div>'.repeat(Math.max(0, shopSlots - p.shop.length))}</div>
+        <div class="counter ${shopFrozen ? 'frozen' : ''}">
+          <div class="shoprow">${p.shop.map(s => shopCard(p, s, owned)).join('')}${'<div class="slot-empty"></div>'.repeat(Math.max(0, shopSlots - p.shop.length))}</div>
           <div class="spells">${p.spellShop.map(s => spellCard(p, s, 'shop')).join('')}</div>
         </div>
 
         ${UI.targeting ? `<div class="target-hint">Escolha um lacaio para <b>${esc(SPELL_BY_ID[p.hand.find(x => x.uid === UI.targeting).spell].name)}</b><button class="btn sm" data-act="cancel">Cancelar · Esc</button></div>` : ''}
-        ${triples.length ? `<div class="fusebar"><span class="label" style="color:var(--gold)">Tripla pronta</span>${triples.map(id => `<button class="btn sm gold" data-act="fuse" data-id="${id}">Fundir ${esc(CARD_BY_ID[id].name)}</button>`).join('')}<span class="note" style="margin:0">pode segurar e fundir quando quiser</span></div>` : ''}
 
-        <div class="label c">Arena · ${p.board.length}/${CONFIG.boardSize} · <span class="pokerbadge" data-act="tab" data-tab="reinos" title="Formação de poker da arena">${evaluatePoker(p.board).hand.name}</span></div>
-        <div class="arena" data-drop="board">${p.board.length ? (() => { const inHand = new Set(evaluatePoker(p.board).cards.map(x => x.uid)); return p.board.map(m => minionCard(m, 'board', UI.targeting ? { cls: 'targetable', act: 'target' } : { cls: inHand.has(m.uid) ? 'inpoker' : '' })); })().join('') : '<span class="hint">Arraste cartas da mão para a arena</span>'}</div>
+        <div class="label c">Arena · ${p.board.length}/${CONFIG.boardSize} · <span class="pokerbadge" data-act="tab" data-tab="comb" title="Combinação da arena">${evaluatePoker(p.board).hand.name}</span></div>
+        <div class="arena" data-drop="board">${p.board.length ? (() => { const inHand = new Set(evaluatePoker(p.board).cards.map(x => x.uid)); return p.board.map(m => minionCard(m, 'board', UI.targeting ? { cls: 'targetable', act: 'target' } : { cls: inHand.has(m.uid) ? 'inpoker' : '', ...trioOf(m) })); })().join('') : '<span class="hint">Arraste cartas da mão para a arena</span>'}</div>
 
         <div class="handwrap">
           <div class="portal sell" data-drop="sell">${ICON.sell()}Vender<br>ouro</div>
-          <div class="hand" data-drop="hand">${p.hand.map(m => (isSpell(m) ? spellCard(p, m, 'hand') : minionCard(m, 'hand', { act: 'play' }))).join('') || '<span class="note">Mão vazia</span>'}</div>
+          <div class="hand" data-drop="hand">${p.hand.map(m => (isSpell(m) ? spellCard(p, m, 'hand') : minionCard(m, 'hand', { act: 'play', ...trioOf(m) }))).join('') || '<span class="note">Mão vazia</span>'}</div>
           <div class="portal burn" data-drop="burn">${ICON.burn()}Queimar<br>Éter</div>
         </div>
       </section>
-      <aside class="rcol"><div class="comphud">${compHudHTML()}</div>
-        <button class="comp-toggle" data-act="comptoggle">${UI.compOpen ? '▾' : '▸'} Compêndio <small>mãos e lacaios</small></button>
-        ${UI.compOpen ? `<div class="comp">${compendiumHTML()}</div>` : ''}</aside>
-      ${UI.grim ? `<aside class="grim pane"><button class="grim-x" data-act="grim" title="Fechar">✕</button>${trackerHTML()}</aside>` : `<button class="grim-tab" data-act="grim" title="Abrir o Grimório (G)">${ICON.grim()}<span>Grimório</span></button>`}
+      <aside class="rcol"><div class="comphud">${compHudHTML()}</div></aside>
+      ${UI.grim ? `<aside class="grim pane ${UI.grimAnim ? 'anim' : ''}"><button class="grim-x" data-act="grim" title="Fechar">✕</button>${trackerHTML()}</aside>` : `<button class="grim-tab" data-act="grim" title="Abrir o Grimório (G)">${ICON.grim()}<span>Grimório</span></button>`}
     </div>
   </div>`;
 }
@@ -234,14 +241,15 @@ function compHudHTML() {
   const ph = evaluatePoker(b);
   const pill = (icon, val, label, cls = '') => `<div class="pill ${cls}"><span class="pi">${icon}</span><b>${val}</b><small>${label}</small></div>`;
   const atk = b.reduce((a, m) => a + m.atk, 0), hp = b.reduce((a, m) => a + m.hp, 0);
-  let html = `<div class="ch-title">Sua comp</div>
-    <div class="ch-hand ${ph.hand.rank ? '' : 'none'}"><small>Formação</small><b>${ph.hand.name}</b>${ph.cards.length ? `<span class="chips">${ph.cards.map(chipOf).join('')}</span>` : ''}
+  let html = `<div class="ch-title">Sua build</div>
+    <div class="ch-hand ${ph.hand.rank ? '' : 'none'}"><small>Combinação</small><b>${ph.hand.name}</b>${ph.cards.length ? `<span class="chips">${ph.cards.map(chipOf).join('')}</span>` : ''}
       <span class="ch-bonus">${ph.hand.rank ? ph.hand.text : 'Monte pares, sequências ou flush na arena.'}</span></div>
     <div class="pills">${pill('<i class="pa"></i>', atk, 'ataque')}${pill('<i class="ph"></i>', hp, 'vida')}</div>`;
 
   const buffs = [];
   const man = b.filter(m => m.tribe === G.manilha).length;
-  buffs.push(pill(`<b class="rkp">${rankLabel(G.manilha)}</b>`, `+${CONFIG.manilhaBuff}/+${CONFIG.manilhaBuff}`, `Manilha · ${TRIBES[G.manilha].name} ×${man}`, man ? 'on' : 'off'));
+  const best = man ? Math.min(...b.filter(m => m.tribe === G.manilha).map(m => suitRank(m.realm))) : -1;
+  buffs.push(pill(`<b class="rkp">${rankLabel(G.manilha)}</b>`, `+${CONFIG.manilhaBuff}/+${CONFIG.manilhaBuff}`, `Manilha · ${TRIBES[G.manilha].name} ×${man}${man ? ` · ${SUITS[best].sym} ${SUITS[best].name}` : ''}`, man ? 'on' : 'off'));
   REALM_ORDER.forEach(r => { const n = realmCount(p, r); if (n) buffs.push(pill(rIcon(r), `${n}/5`, `${REALMS[r].name} · flush`, n >= 3 ? 'on' : '')); });
   const royal = { deathrattle: ['Último Suspiro', 'paladino'], endTurn: ['Fim de Turno', 'rainha'], battlecry: ['Grito de Guerra', 'rei'] };
   Object.entries(royal).forEach(([k, [name]]) => {
@@ -260,115 +268,45 @@ function compHudHTML() {
   return html;
 }
 
-// ───────────────────────────── Compêndio (HUD fixo: mãos + todas as cartas por nível)
-function compendiumHTML() {
+// ───────────────────────────── Grimório: Combinações · Lacaios · Ações
+function trackerHTML() {
+  const tabs = [['comb', 'Combinações'], ['lacaios', 'Lacaios'], ['acoes', 'Ações']];
+  const views = { comb: combHTML, lacaios: lacaiosHTML, acoes: actionsHTML };
+  if (!views[UI.tab]) UI.tab = 'comb';
+  return `<div class="tabs">${tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${n}</button>`).join('')}</div>
+    <div class="tpanel">${views[UI.tab]()}</div>`;
+}
+
+// carta do Ciclo (consulta do baralho físico) + a ordem dos naipes desta rodada
+function cicloHTML() {
+  const ord = suitOrder();
+  return `<div class="ciclo">
+    <div class="cy-card" style="background-image:url('assets/ui/ciclo.webp')" title="Ciclo elemental: Fogo → Água → Ar → Terra → Fogo"></div>
+    <div class="cy-body"><b>Desempate</b><small>A Manilha de naipe mais forte começa atacando</small>
+      ${ord.map((r, i) => `<div class="cy-row ${i === 0 ? 'top' : ''}" style="--realm:var(--${r})"><span class="cy-s">${SUITS[i].sym}</span>${rIcon(r)}<span>${REALMS[r].name}</span><em>${SUITS[i].name}${i === 0 ? ' · Vira' : ''}</em></div>`).join('')}
+      <small class="cy-note">No ciclo, quem vem antes causa +1 de dano no seguinte.</small></div></div>`;
+}
+
+function combHTML() {
   const p = G.human;
   const mine = [...p.board, ...p.hand].filter(m => !isSpell(m));
-  const onBoard = evaluatePoker(p.board);
-  const best = evaluatePoker(mine);
+  const ph = evaluatePoker(p.board);
   const prog = pokerProgress(mine);
+  let html = cicloHTML();
+  html += `<div class="c-sec">Na arena</div>
+    <div class="bonus on" style="flex-direction:column;align-items:flex-start"><span style="font:700 20px var(--display);color:var(--teal)">${ph.hand.name}</span>
+    <span class="note" style="margin:0">${ph.hand.text}</span>${ph.cards.length ? `<span class="chips">${ph.cards.map(chipOf).join('')}</span>` : ''}</div>`;
+  const outs = pokerOuts(mine);
+  if (outs.length) html += `<div class="note" style="margin:4px 0 0">Contando a mão também:</div>` + outs.map(o => `<div class="bonus"><span>${o}</span></div>`).join('');
   const hands = [...POKER_HANDS].reverse().filter(h => h.rank > 0);
-  let html = `<div class="c-sec">Mãos de poker</div><div class="c-hands">` + hands.map(h => {
+  html += `<div class="c-sec">Combinações <small>valor = número · naipe = reino</small></div><div class="c-hands">` + hands.map(h => {
     const miss = prog[h.id];
-    const state = onBoard.hand.id === h.id ? 'now' : miss === 0 ? 'ready' : miss === 1 ? 'near' : miss === 2 ? 'mid' : 'far';
+    const state = ph.hand.id === h.id ? 'now' : miss === 0 ? 'ready' : miss === 1 ? 'near' : miss === 2 ? 'mid' : 'far';
     const tag = state === 'now' ? 'NA ARENA' : state === 'ready' ? 'NA MÃO' : 'falta' + (miss > 1 ? 'm ' : ' ') + miss;
     return `<div class="c-hand ${state}" title="${esc(h.text)}"><span class="c-hn">${h.name}</span>${pokerExample(h.id)}<span class="c-tag">${tag}</span></div>`;
   }).join('') + '</div>';
-
-  // quais cartas melhoram a sua melhor mão
-  const improves = {};
-  CARDS.forEach(c => {
-    if (c.tier > p.tier) return;
-    const r = evaluatePoker([...mine, { tribe: c.tribe, realm: c.realm }]).hand;
-    if (r.rank > best.hand.rank) improves[c.id] = r.name;
-  });
-  // seletor de nível (igual ao tracker): mostra um nível por vez, agrupado por tribo
-  const tierSel = UI.compTier || p.tier;
-  html += `<div class="c-sec">Lacaios por nível <small>${Object.keys(improves).length} melhoram sua mão</small></div>
-    <div class="c-tiers">${[1, 2, 3, 4, 5, 6, 7].map(t => `<button class="c-tbtn ${t === tierSel ? 'on' : ''} ${t > p.tier ? 'lk' : ''}" data-act="ctier" data-t="${t}" title="Nível ${t}${t > p.tier ? ' (bloqueado)' : ''}">${t}</button>`).join('')}</div>`;
-  const locked = tierSel > p.tier;
-  const tribes = Object.keys(TRIBES).filter(t => TRIBES[t].tier === tierSel);
-  html += `<div class="c-list ${locked ? 'locked' : ''}">` + tribes.map(tr => {
-    const cards = CARDS.filter(c => c.tribe === tr).sort((x, y) => REALM_ORDER.indexOf(x.realm) - REALM_ORDER.indexOf(y.realm));
-    return `<div class="c-tribe"><b>${rankLabel(tr)}</b>${TRIBES[tr].name}${tr === G.manilha ? '<em>Manilha</em>' : ''}</div>` + cards.map(c => {
-      const left = G.pool[c.id], total = COPIES_BY_TIER[c.tier];
-      const own = mine.filter(m => m.id === c.id).length;
-      return `<div class="c-card ${improves[c.id] ? 'up' : ''} ${c.tribe === G.manilha ? 'man' : ''} ${left === 0 ? 'out' : ''}" style="--realm:var(--${c.realm})" data-card="${c.id}" data-act="wish" data-id="${c.id}">
-        <span class="c-face" style="background-image:url('${c.art}')"></span>
-        ${rIcon(c.realm)}<span class="c-nm">${esc(c.name)}${p.wishlist.has(c.id) ? ' <i class="c-star">★</i>' : ''}</span>
-        ${improves[c.id] ? `<span class="c-up">↑ ${improves[c.id]}</span>` : own ? `<span class="c-own">×${own}</span>` : ''}
-        <span class="c-left" title="${left} de ${total} no estoque">${left}</span></div>`;
-    }).join('');
-  }).join('') + '</div>';
-  return html;
-}
-
-// ───────────────────────────── Grimório (Deck Tracker)
-function trackerHTML() {
-  const tabs = [['estoque', 'Estoque'], ['reinos', 'Poker'], ['acoes', 'Ações'], ['patrimonio', 'Tesouro']];
-  return `<div class="tabs">${tabs.map(([k, n]) => `<button class="${UI.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${n}</button>`).join('')}</div>
-    <div class="tpanel">${({ estoque: stockHTML, reinos: synergyHTML, acoes: actionsHTML, patrimonio: worthHTML })[UI.tab]()}</div>`;
-}
-
-function stockHTML() {
-  const p = G.human;
-  const fb = (act, val, cur, label) => `<button class="${cur === val ? 'on' : ''}" data-act="${act}" data-val="${val ?? ''}">${label}</button>`;
-  let cards = CARDS.filter(c => (!UI.fRealm || c.realm === UI.fRealm) && (!UI.fTribe || c.tribe === UI.fTribe) && (!UI.onlyWish || p.wishlist.has(c.id)));
-  if (UI.fTier === 'meu') cards = cards.filter(c => c.tier <= p.tier);
-  const wish = [...p.wishlist].map(id => shopOdds(p, id));
-  const wishAny = wish.length ? 1 - wish.reduce((a, v) => a * (1 - v), 1) : 0;
-  const owned = {};
-  [...p.board, ...p.hand].forEach(m => { if (!isSpell(m) && !m.golden) owned[m.id] = (owned[m.id] || 0) + 1; });
-  const near = Object.keys(owned).filter(id => owned[id] === 2);
-
-  let html = `<div class="filters">${fb('ftier', 'meu', UI.fTier, 'Meu nível')}${fb('ftier', 'todos', UI.fTier, 'Todos')}
-    <button class="${UI.onlyWish ? 'on' : ''}" data-act="fwish">★ Desejos</button></div>
-    <div class="filters">${fb('frealm', null, UI.fRealm, 'Reinos')}${REALM_ORDER.map(r => fb('frealm', r, UI.fRealm, rIcon(r) + REALMS[r].name)).join('')}</div>
-    <div class="filters">${fb('ftribe', null, UI.fTribe, 'Todas as tribos')}</div>
-    <div class="fhead">Disponíveis na sua Taverna</div>
-    <div class="filters">${Object.keys(TRIBES).filter(t => TRIBES[t].tier <= p.tier).map(t => fb('ftribe', t, UI.fTribe, `<b class="rkb">${rankLabel(t)}</b>${TRIBES[t].name}`)).join('')}</div>
-    <div class="fhead">Bloqueadas · sobem com a Taverna</div>
-    <div class="filters locked">${Object.keys(TRIBES).filter(t => TRIBES[t].tier > p.tier).map(t => fb('ftribe', t, UI.fTribe, `<b class="rkb">${rankLabel(t)}</b>${TRIBES[t].name}<small>nv ${TRIBES[t].tier}</small>`)).join('') || '<span class="note">Nenhuma: Taverna no máximo.</span>'}</div>`;
-  if (p.wishlist.size) html += `<div class="bonus on"><span>★ Ver um desejo na próxima renovação</span><b class="pct ${pctClass(wishAny)}">${pctText(wishAny)}</b></div>`;
-  near.forEach(id => {
-    const o = shopOdds(p, id);
-    html += `<div class="bonus on"><span>✦ Tripla de ${esc(CARD_BY_ID[id].name)} · falta 1 · em 5 renovações</span><b class="pct ${pctClass(o)}">${pctText(o)} · ${pctText(1 - Math.pow(1 - o, 5))}</b></div>`;
-  });
-  for (let t = 1; t <= 7; t++) {
-    const tc = cards.filter(c => c.tier === t);
-    if (!tc.length) continue;
-    html += `<div class="tierhead">NÍVEL ${t} · ${COPIES_BY_TIER[t]} CÓPIAS</div>`;
-    html += tc.map(c => {
-      const left = G.pool[c.id], total = COPIES_BY_TIER[t];
-      const o = shopOdds(p, c.id);
-      const locked = t > p.tier;
-      return `<div class="trow ${locked ? 'locked' : ''}" style="--realm:${realmVar(c.realm)}" data-card="${c.id}">
-        <button class="star ${p.wishlist.has(c.id) ? 'on' : ''}" data-act="wish" data-id="${c.id}" title="Lista de desejos">★</button>
-        ${rIcon(c.realm)}
-        <span class="nm">${esc(c.name)} <small>${TRIBES[c.tribe].name}${owned[c.id] ? ' · tem ' + owned[c.id] : ''}</small></span>
-        <span class="stock" title="${left}/${total} no estoque"><i style="width:${left / total * 100}%"></i></span>
-        <span class="pct ${locked ? 'lo' : pctClass(o)}">${locked ? `${left}/${total}` : pctText(o)}</span>
-      </div>`;
-    }).join('');
-  }
-  html += `<p class="note">% = chance de a carta aparecer na próxima renovação, com o estoque compartilhado ao vivo, as vagas livres e a Manilha. Barra = cópias restantes na mesa.</p>`;
-  return html;
-}
-
-function synergyHTML() {
-  const p = G.human;
-  const ph = evaluatePoker(p.board);
-  const used = new Set(ph.cards.map(m => m.uid));
-  let html = `<div class="label">Formação na arena</div><div style="height:8px"></div>
-    <div class="bonus on" style="flex-direction:column;align-items:flex-start"><span style="font:700 20px var(--display);color:var(--teal)">${ph.hand.name}</span>
-    <span class="note" style="margin:0">${ph.hand.text}</span>
-    ${ph.cards.length ? `<span class="chips">${ph.cards.map(chipOf).join('')}</span>` : ''}</div>`;
-  const outs = pokerOuts([...p.board, ...p.hand.filter(m => !isSpell(m))]);
-  if (outs.length) html += `<div class="note" style="margin:4px 0 0">Contando a mão também:</div>` + outs.map(o => `<div class="bonus"><span>${o}</span></div>`).join('');
-  html += `<div style="height:10px"></div><div class="label">Mãos de poker</div><p class="note" style="margin-top:4px">Valor = número da carta (A a K) · naipe = símbolo do reino. A melhor mão de 5 cartas da arena vale no início de cada combate. Sequência aceita Ás baixo (Ás-2-3-4-5) e alto (10-J-Q-K-Ás).</p>` +
-    [...POKER_HANDS].reverse().filter(h => h.rank > 0).map(h => `<div class="phand ${h.id === ph.hand.id ? 'on' : ''}"><div class="ph-top"><b>${h.name}</b>${pokerExample(h.id)}</div><span class="note">${h.text}</span></div>`).join('');
-  html += `<div class="note">Flush ativa o poder do reino: ${REALM_ORDER.map(r => `${REALMS[r].name}, ${REALM_POWER[r]}`).join('; ')}.</div>`;
-  html += `<div style="height:10px"></div><div class="label">Reações na arena</div><div style="height:8px"></div>`;
+  html += `<p class="note">A melhor combinação de 5 cartas da arena vale no início de cada combate. Sequência aceita Ás baixo (Ás-2-3-4-5) e alto (10-J-Q-K-Ás). Flush ativa o poder do reino: ${REALM_ORDER.map(r => `${REALMS[r].name}, ${REALM_POWER[r]}`).join('; ')}.</p>`;
+  html += `<div class="c-sec">Reações na arena</div>`;
   const usedR = new Set(); let found = 0;
   for (let i = 0; i + 1 < p.board.length; i++) {
     const l = p.board[i], r = p.board[i + 1];
@@ -379,35 +317,78 @@ function synergyHTML() {
     html += `<div class="bonus on"><span><b>${re.name}</b> · ${esc(l.name)} + ${esc(r.name)}</span></div><div class="note" style="margin:-2px 0 6px 8px">${re.text}</div>`;
   }
   if (!found) html += `<p class="note">Cartas de reinos diferentes lado a lado reagem no início do combate.</p>`;
-  html += `<div style="height:10px"></div><div class="label">Ciclo elemental</div><p class="note">Fogo → Água → Ar → Terra → Fogo. Quem vem antes no ciclo causa +1 de dano contra o seguinte.</p>`;
+  return html;
+}
+
+// lista estilo tracker: rosto do personagem, cópias que você tem, chance e estoque
+function lacaiosHTML() {
+  const p = G.human;
+  const mine = [...p.board, ...p.hand].filter(m => !isSpell(m));
+  const best = evaluatePoker(mine);
+  const owned = {};
+  mine.forEach(m => { if (!m.golden) owned[m.id] = (owned[m.id] || 0) + 1; });
+  const improves = {};
+  CARDS.forEach(c => {
+    if (c.tier > p.tier) return;
+    const r = evaluatePoker([...mine, { tribe: c.tribe, realm: c.realm }]).hand;
+    if (r.rank > best.hand.rank) improves[c.id] = r.name;
+  });
+  let html = '';
+  const wish = [...p.wishlist].map(id => shopOdds(p, id));
+  const wishAny = wish.length ? 1 - wish.reduce((a, v) => a * (1 - v), 1) : 0;
+  if (p.wishlist.size) html += `<div class="bonus on"><span>★ Ver um desejo na próxima renovação</span><b class="pct ${pctClass(wishAny)}">${pctText(wishAny)}</b></div>`;
+  Object.keys(owned).filter(id => owned[id] === 2).forEach(id => {
+    const o = shopOdds(p, id);
+    html += `<div class="bonus on evo"><span>EVO de ${esc(CARD_BY_ID[id].name)} · falta 1 · em 5 renovações</span><b class="pct ${pctClass(o)}">${pctText(o)} · ${pctText(1 - Math.pow(1 - o, 5))}</b></div>`;
+  });
+  const tierSel = UI.compTier || p.tier;
+  html += `<div class="c-sec">Lacaios por nível <small>${Object.keys(improves).length} melhoram sua combinação</small></div>
+    <div class="c-tiers">${[1, 2, 3, 4, 5, 6, 7].map(t => `<button class="c-tbtn ${t === tierSel ? 'on' : ''} ${t > p.tier ? 'lk' : ''}" data-act="ctier" data-t="${t}" title="Nível ${t}${t > p.tier ? ' (bloqueado)' : ''}">${t}</button>`).join('')}</div>`;
+  const locked = tierSel > p.tier;
+  const tribes = Object.keys(TRIBES).filter(t => TRIBES[t].tier === tierSel);
+  html += `<div class="c-list ${locked ? 'locked' : ''}">` + tribes.map(tr => {
+    const cards = CARDS.filter(c => c.tribe === tr).sort((x, y) => REALM_ORDER.indexOf(x.realm) - REALM_ORDER.indexOf(y.realm));
+    return `<div class="c-tribe"><b>${rankLabel(tr)}</b>${TRIBES[tr].name}${tr === G.manilha ? '<em>Manilha</em>' : ''}</div>` + cards.map(c => {
+      const left = G.pool[c.id], total = COPIES_BY_TIER[c.tier];
+      const own = owned[c.id] || 0;
+      const o = shopOdds(p, c.id);
+      return `<div class="c-card ${improves[c.id] ? 'up' : ''} ${c.tribe === G.manilha ? 'man' : ''} ${left === 0 ? 'out' : ''} ${own === 2 ? 'evo' : ''}" style="--realm:var(--${c.realm})" data-card="${c.id}" data-act="wish" data-id="${c.id}">
+        <span class="c-face" style="background-image:url('${c.art}')"></span>
+        ${rIcon(c.realm)}<span class="c-nm">${esc(c.name)}${p.wishlist.has(c.id) ? ' <i class="c-star">★</i>' : ''}</span>
+        ${improves[c.id] ? `<span class="c-up">↑ ${improves[c.id]}</span>` : ''}
+        ${own ? `<span class="c-own ${own === 2 ? 'evo' : ''}" title="Você tem ${own} de 3 para a EVO">${own}/3</span>` : ''}
+        <span class="c-pct ${locked ? 'lo' : pctClass(o)}" title="Chance de aparecer na próxima renovação">${locked ? '—' : pctText(o)}</span>
+        <span class="c-left" title="${left} de ${total} no estoque da mesa">${left}</span></div>`;
+    }).join('');
+  }).join('') + '</div>';
+  html += `<p class="note">Clique numa carta para marcar como desejo ★ · % = chance de aparecer na próxima renovação · número = cópias no estoque da mesa.</p>`;
   return html;
 }
 
 function actionsHTML() {
   const p = G.human, rs = p.roundStats, st = p.stats;
   const row = (k, a, b) => `<div class="kv"><span>${k}</span><b>${a}</b><b style="color:var(--mute)">${b}</b></div>`;
-  const KI = { buy: '◆', sell: '$', burn: '✦', spell: '✧', spellbuy: '✧', mago: '✧', triple: '★', upgrade: '▲', combat: '⚔', reroll: '↻', pin: '•', play: '▸', discover: '◇', hero: '◎', treasury: '$' };
-  return `<div class="kv" style="color:var(--mute)"><span></span><span>rodada</span><span>partida</span></div>
-    ${row('Ouro no início', rs.goldStart, '—')}
-    ${row('Compras', rs.bought, st.bought)}${row('Vendas', rs.sold, st.sold)}${row('Queimas', rs.burned, st.burned)}
-    ${row('Feitiços', rs.spells, st.spells)}${row('Renovações', rs.rerolls, st.rerolls)}${row('Triplas', '—', st.triples)}
-    ${row('Ouro gasto', '—', st.goldSpent)}
-    <div style="height:10px"></div><div class="label">Últimas ações</div>
-    ${G.log.slice(-14).reverse().map(l => `<div class="logrow"><span><span class="k">${KI[l.kind] || '·'}</span>${esc(l.text)}</span></div>`).join('')}`;
-}
-
-function worthHTML() {
-  const p = G.human;
+  const KI = { buy: '◆', sell: '$', burn: '✦', spell: '✧', spellbuy: '✧', mago: '✧', triple: '★', upgrade: '▲', combat: '⚔', reroll: '↻', freeze: '❄', play: '▸', discover: '◇', hero: '◎', treasury: '$' };
   const items = [...p.board, ...p.hand].filter(m => !isSpell(m));
-  const boardVal = items.reduce((s, m) => s + SELL_VALUE_BY_TIER[m.tier] + (m.golden ? 1 : 0), 0);
+  const boardVal = items.reduce((v, m) => v + SELL_VALUE_BY_TIER[m.tier] + (m.golden ? 1 : 0), 0);
   const eth = Object.values(p.ether).reduce((a, b) => a + b, 0);
-  return `<div class="kv"><span>Caixa</span><b>${p.gold}</b></div>
+  return `<button class="livro-btn" data-act="livro">${ICON.book()}<span><b>Livro da Partida</b><small>linha do tempo, combates e raio-x</small></span></button>
+    <div class="c-sec">Tesouro</div>
+    <div class="kv"><span>Caixa</span><b>${p.gold}</b></div>
     <div class="kv"><span>Tesouro</span><b>${p.treasury}</b></div>
     <div class="kv"><span>Valor de venda das cartas</span><b>${boardVal}</b></div>
     <div class="kv"><span>Éter</span><b>${eth}</b></div>
     <div class="kv"><span><b>Patrimônio</b></span><b style="color:var(--gold)">${networth(p)}</b></div>
     <p class="note">Ouro que sobra vai pro Tesouro e rende +1 a cada 3 (máx +3/rodada). Com Goblin na arena, os juros dobram.</p>
-    <div style="height:8px"></div><div class="label">Curva da mesa</div><div style="height:6px"></div>${worthChart(290, 180)}`;
+    <div class="c-sec">Ações</div>
+    <div class="kv" style="color:var(--mute)"><span></span><span>rodada</span><span>partida</span></div>
+    ${row('Ouro no início', rs.goldStart, '—')}
+    ${row('Compras', rs.bought, st.bought)}${row('Vendas', rs.sold, st.sold)}${row('Queimas', rs.burned, st.burned)}
+    ${row('Feitiços', rs.spells, st.spells)}${row('Renovações', rs.rerolls, st.rerolls)}${row('EVOs', '—', st.triples)}
+    ${row('Ouro gasto', '—', st.goldSpent)}
+    <div class="c-sec">Últimas ações</div>
+    ${G.log.slice(-14).reverse().map(l => `<div class="logrow"><span><span class="k">${KI[l.kind] || '·'}</span>${esc(l.text)}</span></div>`).join('')}
+    <div class="c-sec">Curva da mesa</div>${worthChart(290, 180)}`;
 }
 
 function worthChart(w, h) {
@@ -520,6 +501,7 @@ function playReplay(rep, onDone, fromLivro = false) {
     for (let k = 0; k < N; k++) res[simulateCombat(A0, B0, { seed: 7919 * (k + 1) }).winner]++;
     rep.odds = { win: res[youKey] / N, tie: res.tie / N, lose: res[oppKey] / N };
   }
+  const firstHl = (rep.frames.find(f => f.hl && f.hl.first) || {}).hl;
   const sum = arr => arr.reduce((a, m) => ({ atk: a.atk + Math.max(0, m.atk), hp: a.hp + Math.max(0, m.hp), n: a.n + 1 }), { atk: 0, hp: 0, n: 0 });
   const pct = v => Math.round(v * 100) + '%';
 
@@ -537,7 +519,7 @@ function playReplay(rep, onDone, fromLivro = false) {
       const ph = phs[key];
       const bars = '<i></i>'.repeat(ph.hand.rank) + '<i class="off"></i>'.repeat(9 - ph.hand.rank);
       return `<div class="pk pk-${side} ${ph.hand.rank ? 'r' + ph.hand.rank : 'none'} ${lit === key ? 'lit' : ''}">
-        <small>${who}</small><b>${ph.hand.name}</b><span class="pk-bars" title="força da mão">${bars}</span>
+        <small>${who}</small>${firstHl && firstHl.first === key ? `<span class="pk-first" title="Quem ataca primeiro">⚑ começa · ${esc(firstHl.why)}</span>` : ''}<b>${ph.hand.name}</b><span class="pk-bars" title="força da mão">${bars}</span>
         ${ph.cards.length ? `<span class="chips">${ph.cards.map(chipOf).join('')}</span>` : ''}
         ${ph.hand.rank ? `<span class="pk-txt">${esc(ph.hand.text)}</span>` : '<span class="pk-txt">Sem combinação: nenhum bônus.</span>'}</div>`;
     };
@@ -650,7 +632,7 @@ function livro(tab = 'tempo') {
       <div class="kv"><span>Ouro gasto</span><b>${st.goldSpent}</b></div>
       <div class="kv"><span>Compras / vendas / queimas</span><b>${st.bought} / ${st.sold} / ${st.burned}</b></div>
       <div class="kv"><span>Feitiços conjurados</span><b>${st.spells}</b></div>
-      <div class="kv"><span>Triplas</span><b>${st.triples}</b></div>
+      <div class="kv"><span>EVOs</span><b>${st.triples}</b></div>
       <div class="kv"><span>Renovações</span><b>${st.rerolls}</b></div>
       <div class="kv"><span>Subidas de Taverna</span><b>${st.ups} (nível ${p.tier})</b></div>
       <div class="kv"><span>Giro (vendas ÷ compras)</span><b>${st.bought ? Math.round(st.sold / st.bought * 100) : 0}%</b></div>
@@ -692,7 +674,26 @@ function doAction(fn, failMsg, fx = {}) {
   render();
   FX.transition(before, fx);
   if (fx.sound) SFX[fx.sound]();
+  queueEvo();
   return r;
+}
+
+// 3 cópias do mesmo lacaio (mão + arena) viram 1 EVO na hora, com a recompensa de descobrir 1 carta do nível +1
+function queueEvo() {
+  const p = G.human;
+  if (UI.evoBusy || UI.phase !== 'recruit' || !triplesAvailable(p).length) return;
+  UI.evoBusy = true;
+  setTimeout(() => {
+    UI.evoBusy = false;
+    const id = UI.phase === 'recruit' && triplesAvailable(p)[0];
+    if (!id) return;
+    const opts = doAction(() => ACTIONS.fuse(p, id), 'Não deu para evoluir', { kind: 'fuse', sound: 'triple' });
+    if (!opts) return;
+    FX.floatText(innerWidth / 2, innerHeight * 0.42, 'EVO!', 'evo big');
+    const evoEl = [...document.querySelectorAll('.card.golden')].find(e => e.dataset.card === id);
+    if (evoEl) { evoEl.classList.add('evo-up'); setTimeout(() => FX.burst(evoEl, '#b46bff', true), 700); setTimeout(() => FX.particles(evoEl.getBoundingClientRect().left + evoEl.offsetWidth / 2, evoEl.getBoundingClientRect().top + evoEl.offsetHeight / 2, { color: '#c48bff', count: 34, spread: 120, size: 6, rise: 80, shape: 'shard', dur: 1100 }), 750); }
+    setTimeout(() => showDiscover(opts), 1500);
+  }, 480);
 }
 const keyRect = key => { const e = document.querySelector(`[data-key="${key}"]`); return e ? e.getBoundingClientRect() : null; };
 
@@ -710,15 +711,14 @@ document.addEventListener('click', e => {
     case 'livro-tab': SFX.click(); return livro(el.dataset.tab);
     case 'close-modal': closeModal(); return render();
     case 'replay': { const rep = G.replays[+el.dataset.i]; closeModal(); return playReplay(rep, () => livro('combates'), true); }
-    case 'discover': { const id = el.dataset.card; const before = FX.snapshot(); ACTIONS.discover(p, id); closeModal(); render(); FX.transition(before, {}); SFX.buy(); return; }
+    case 'discover': { const id = el.dataset.card; const before = FX.snapshot(); ACTIONS.discover(p, id); closeModal(); render(); FX.transition(before, {}); SFX.buy(); queueEvo(); return; }
     case 'sound': { const m = SFX.toggle(); if (!m) SFX.click(); return render(); }
   }
   if (UI.phase !== 'recruit') return;
   switch (act) {
     case 'end': SFX.click(); return endHumanTurn();
     case 'timer': UI.timerOn = !UI.timerOn; SFX.click(); return render();
-    case 'grim': UI.grim = !UI.grim; SFX.click(); return render();
-    case 'comptoggle': UI.compOpen = !UI.compOpen; SFX.click(); return render();
+    case 'grim': UI.grim = !UI.grim; UI.grimAnim = UI.grim; SFX.click(); render(); UI.grimAnim = false; return;
     case 'ctier': UI.compTier = +el.dataset.t; SFX.click(); return render();
     case 'tab': UI.tab = el.dataset.tab; SFX.click(); return render();
     case 'ftier': UI.fTier = el.dataset.val; return render();
@@ -756,7 +756,17 @@ document.addEventListener('click', e => {
       if (r && fromRect) { const g = $('#hud-gold'); if (g) FX.flyTo(g.getBoundingClientRect(), `[data-key="m${r.uid}"]`, { count: 2, kind: 'coin' }); SFX.coin(); }
       return;
     }
-    case 'pin': return doAction(() => ACTIONS.pin(p, uid), 'Ouro insuficiente para fixar', { sound: 'pin' });
+    case 'freeze': {
+      const r = doAction(() => ACTIONS.freeze(p), 'Nada para congelar', { sound: 'pin' });
+      if (r === 'on') { const c = $('.counter'); if (c) FX.burst(c, '#bfe9ff'); toast('Taverna congelada: estas cartas ficam para a próxima rodada'); }
+      return;
+    }
+    case 'freezecard': {
+      const sh = p.shop.find(x => x.uid === uid), c = sh && CARD_BY_ID[sh.id];
+      const r = doAction(() => ACTIONS.freezeCard(p, uid), c ? `Congelar custa ${CONFIG.freezeCardEther} Éter de ${REALMS[c.realm].name}` : 'Não deu para congelar', { sound: 'pin' });
+      if (r === 'on') { const e = document.querySelector(`[data-key="s${uid}"]`); if (e) FX.burst(e, '#bfe9ff', true); }
+      return;
+    }
     case 'burnshop': return doAction(() => ACTIONS.burnShop(p, uid), 'Queimar da loja custa 1 ouro', { kind: 'burn', sound: 'burn' });
     case 'play': {
       const r = doAction(() => ACTIONS.play(p, uid), 'Arena cheia', { kind: 'play', key: 'm' + uid, sound: 'play' });
@@ -799,11 +809,7 @@ document.addEventListener('click', e => {
       if (i < 0 || to < 0 || to >= p.board.length) return;
       return doAction(() => ACTIONS.move(p, uid, to), '', { sound: 'click' });
     }
-    case 'fuse': {
-      const opts = doAction(() => ACTIONS.fuse(p, el.dataset.id), 'Não deu para fundir', { kind: 'fuse', sound: 'triple' });
-      FX.floatText(innerWidth / 2, innerHeight * 0.42, 'TRIPLA!', 'gold big');
-      return setTimeout(() => showDiscover(opts), 1300);
-    }
+    case 'fuse': return queueEvo();
   }
 });
 
@@ -814,7 +820,8 @@ document.addEventListener('keydown', e => {
   if (k === 'r') doAction(() => ACTIONS.reroll(p), 'Ouro insuficiente para renovar', { kind: 'reroll', sound: 'reroll' });
   else if (k === 'u') { const b = $('#btn-up'); if (b) b.click(); }
   else if (k === 'e') endHumanTurn();
-  else if (k === 'g') { UI.grim = !UI.grim; render(); }
+  else if (k === 'g') { UI.grim = !UI.grim; UI.grimAnim = UI.grim; render(); UI.grimAnim = false; }
+  else if (k === 'f') { const b = document.querySelector('[data-act="freeze"]'); if (b) b.click(); }
   else if (e.key === 'Escape' && UI.targeting) { UI.targeting = null; render(); }
 });
 
@@ -858,6 +865,7 @@ document.addEventListener('pointerdown', e => {
   if (card.classList.contains('spell') && src === 'hand') src = 'spell';
   if (card.dataset.mago) src = 'spellshop';
   PD.st = { card, src, uid: +card.dataset.uid, x0: e.clientX, y0: e.clientY, on: false, ghost: null, id: e.pointerId };
+  hideInspector();
 });
 
 document.addEventListener('pointermove', e => {
@@ -959,47 +967,95 @@ function dropCard(st, zone, x) {
   }
 }
 
-// ───────────────────────────── visor da carta: grande, à esquerda
+// ───────────────────────────── visor da carta: o livro aberto
+// página da esquerda = só a ilustração · página da direita = a carta com tudo o que ela faz
 const KW_HELP = {
   taunt: 'Provocar: inimigos precisam atacar esta carta primeiro.', shield: 'Escudo: ignora o primeiro dano.',
   windfury: 'Fúria dos Ventos: ataca duas vezes.', reborn: 'Renascer: volta com 1 de vida ao morrer.',
   poison: 'Veneno: destrói o que atingir.', magnetic: 'Magnetizar: funde-se a um Golem ao ser jogado.',
 };
-function showInspector(el) {
-  const ins = $('#inspect');
-  let html = '';
+const BOOK_GEM = { ar: [17.1, 12.5], fogo: [33.9, 7.8], agua: [50, 6.1], terra: [65.6, 8], eter: [82.6, 12.7] }; // gemas do topo (%)
+const SWORD = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 2.5l-1 4.6-9 9-2.6-2.6 9-9zM6.2 13.4l4.4 4.4-1.5 1.5-1.4-1.4-2.6 2.6.1 1.2-1.3 1.3-2.2-2.2 1.3-1.3 1.2.1 2.6-2.6-1.4-1.4z"/></svg>';
+const HEART = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.3L3.6 12.8A5.2 5.2 0 0 1 12 6a5.2 5.2 0 0 1 8.4 6.8z"/></svg>';
+
+function bookHTML(el) {
+  const p = G.human;
+  let art = '', artCls = '', realm = 'eter', name = '', l2 = '', l3 = '', l4 = '', c1 = '', c2 = '', c3 = '', body = '';
   if (el.dataset.mago) {
-    html = `<div class="in-art" style="background-image:url('assets/cards/mago.png')"></div><div class="in-body"><div class="in-top"><span class="in-rk">✦</span><div><b>Mago</b><small>Coringa · ${MAGO_COST} ouro</small></div></div>
-      <p>Ganha um feitiço aleatório e −1 Éter em todos os feitiços nesta rodada.</p></div>`;
+    art = "url('assets/cards/mago.png')"; name = 'Mago';
+    l2 = `${ICON.eter('var(--eter)')} Coringa · Éter`; l3 = `Custa ${MAGO_COST} ouro`; l4 = 'Um por rodada';
+    c3 = '<b class="bk-rk">✦</b>';
+    body = '<p>Ganha um feitiço aleatório e −1 Éter em todos os feitiços nesta rodada.</p>';
   } else if (el.dataset.spell) {
     const sp = SPELL_BY_ID[el.dataset.spell];
-    html = `<div class="in-art spell">${ICON.sigil()}</div><div class="in-body"><div class="in-top"><span class="in-rk">✧</span><div><b>${esc(sp.name)}</b><small>Feitiço · ${etherText(sp.cost)}</small></div></div><p>${esc(sp.text)}</p></div>`;
+    artCls = 'spell'; name = esc(sp.name);
+    l2 = `${ICON.eter('var(--eter)')} Feitiço`; l3 = `Custa ${etherIcons(p ? spellCost(p, sp.id) : sp.cost)}`; l4 = sp.target ? 'Escolha um lacaio seu' : 'Efeito imediato';
+    c3 = '<b class="bk-rk">✧</b>';
+    body = `<p>${esc(sp.text)}</p>`;
   } else {
-    const c = CARD_BY_ID[el.dataset.card]; if (!c) return hideInspector();
+    const c = CARD_BY_ID[el.dataset.card]; if (!c) return '';
     const g = el.dataset.golden === '1';
+    realm = c.realm; art = `url('${c.art}')`;
     const atk = el.querySelector('.atk') ? el.querySelector('.atk').textContent : c.atk;
     const hp = el.querySelector('.hp') ? el.querySelector('.hp').textContent : c.hp;
     const kws = [...el.querySelectorAll('.kw i')].map(i => i.title);
-    const kwKeys = Object.keys(KEYWORDS).filter(k => kws.includes(KEYWORDS[k].name));
-    html = `<div class="in-art" style="background-image:url('${c.art}');--realm:var(--${c.realm})"></div>
-      <div class="in-body" style="--realm:var(--${c.realm})">
-        <div class="in-top"><span class="in-rk">${rankLabel(c.tribe)}</span><div><b>${esc(c.name)}${g ? ' ✦' : ''}</b><small>${rIcon(c.realm)} ${TRIBES[c.tribe].name} de ${REALMS[c.realm].name} · Nível ${c.tier}</small></div></div>
-        <p>${esc(c.text)}</p>
-        ${kwKeys.map(k => `<p class="in-kw">${KW_HELP[k]}</p>`).join('')}
-        ${g ? '<p class="in-note">Dourada: atributos ×2 e efeito dispara 2×.</p>' : ''}
-        ${c.tribe === G.manilha ? '<p class="in-note man">Manilha desta rodada: +2/+2 no combate.</p>' : ''}
-        <div class="in-stats"><span class="in-a">${atk}</span><span class="in-meta">${G.human ? `estoque ${G.pool[c.id]}/${COPIES_BY_TIER[c.tier]} · aparece ${pctText(shopOdds(G.human, c.id))}` : ''}</span><span class="in-h">${hp}</span></div>
-      </div>`;
+    const kwKeys = Object.keys(KEYWORDS).filter(k => kws.includes(KEYWORDS[k].name) || (!el.querySelector('.kw') && c.kw.includes(k)));
+    const own = p ? [...p.board, ...p.hand].filter(m => !isSpell(m) && !m.golden && m.id === c.id).length : 0;
+    name = `${esc(c.name)}${g ? ' <em class="bk-evo">EVO</em>' : ''}`;
+    l2 = `${rIcon(c.realm)} ${TRIBES[c.tribe].name} de ${REALMS[c.realm].name}`;
+    l3 = `Nível ${c.tier}${c.tribe === G.manilha ? ' · <b class="bk-man">Manilha</b>' : ''}${kwKeys.length ? ' · ' + kwKeys.map(k => KEYWORDS[k].name).join(', ') : ''}`;
+    l4 = p ? `Estoque ${G.pool[c.id]}/${COPIES_BY_TIER[c.tier]} · aparece ${pctText(shopOdds(p, c.id))}` : '';
+    c1 = `<span class="bk-a">${SWORD}<b>${atk}</b></span>`; c2 = `<span class="bk-h">${HEART}<b>${hp}</b></span>`; c3 = `<b class="bk-rk">${rankLabel(c.tribe)}</b>`;
+    body = `<p>${esc(g ? evoText(c) : c.text)}</p>`;
+    if (!g && own) body += `<p class="bk-evop"><b>EVO ${own}/3:</b> ${esc(evoText(c))}</p>`;
+    if (c.tribe === G.manilha) body += `<p class="bk-small">Manilha da rodada: +${CONFIG.manilhaBuff}/+${CONFIG.manilhaBuff} no combate e custa ${CONFIG.manilhaCost}.</p>`;
+    kwKeys.forEach(k => { body += `<p class="bk-small">${KW_HELP[k]}</p>`; });
   }
-  ins.innerHTML = html; ins.hidden = false;
+  const [gx, gy] = BOOK_GEM[realm];
+  return `<div class="bk" style="--realm:var(--${realm})">
+    <i class="bk-gem" style="left:${gx}%;top:${gy}%"></i>
+    <div class="bk-art ${artCls}" ${art ? `style="background-image:${art}"` : ''}>${artCls === 'spell' ? ICON.sigil() : ''}</div>
+    <div class="bk-bar b1"><span class="bk-name">${name}</span></div><div class="bk-bar b2">${l2}</div><div class="bk-bar b3">${l3}</div><div class="bk-bar b4">${l4}</div>
+    <div class="bk-c c1">${c1}</div><div class="bk-c c2">${c2}</div><div class="bk-c c3">${c3}</div>
+    <div class="bk-box">${body}</div></div>`;
 }
-function hideInspector() { const ins = $('#inspect'); if (ins) ins.hidden = true; }
+
+function fitText(box) {
+  if (!box) return;
+  let fs = parseFloat(getComputedStyle(box).fontSize);
+  while (box.scrollHeight > box.clientHeight + 1 && fs > 8) { fs -= 0.5; box.style.fontSize = fs + 'px'; }
+}
+
+function showInspector(el) {
+  const ins = $('#inspect');
+  const html = bookHTML(el);
+  if (!html) return hideInspector();
+  // o livro abre na metade da tela oposta à carta, sem cobrir a loja nem a carta
+  const r = el.getBoundingClientRect();
+  const bw = Math.round(Math.min(innerWidth / 2 - 20, 1000, (innerHeight - 24) * 1.5));
+  const bh = bw / 1.5;
+  ins.style.setProperty('--bw', bw + 'px');
+  ins.style.left = (r.left + r.width / 2 < innerWidth / 2 ? innerWidth - bw - 10 : 10) + 'px';
+  ins.style.top = Math.max(12, Math.min(innerHeight - bh - 12, r.top + r.height / 2 - bh / 2)) + 'px';
+  ins.innerHTML = html;
+  ins.hidden = false;
+  fitText(ins.querySelector('.bk-box'));
+  ins.querySelectorAll('.bk-bar').forEach(fitLine);
+}
+function fitLine(bar) {
+  let fs = parseFloat(getComputedStyle(bar).fontSize);
+  while (bar.scrollWidth > bar.clientWidth + 1 && fs > 8) { fs -= 0.5; bar.style.fontSize = fs + 'px'; }
+}
+function hideInspector() { clearTimeout(UI.insT); UI.insEl = null; const ins = $('#inspect'); if (ins) ins.hidden = true; }
 document.addEventListener('mouseover', e => {
   $('#tip').hidden = true;
-  if (PD.st && PD.st.on) return hideInspector();
+  if (PD.st) return hideInspector(); // segurando ou arrastando: sem visor
   const el = e.target.closest('.card[data-card], .card[data-spell], .card[data-mago], .c-card[data-card]');
   if (!el || !el.closest('#app, .combat-view, #modal')) return hideInspector();
-  showInspector(el);
+  if (UI.insEl === el) return;
+  clearTimeout(UI.insT);
+  UI.insEl = el;
+  UI.insT = setTimeout(() => { if (UI.insEl === el && !PD.st && document.body.contains(el)) showInspector(el); }, 130);
 });
 
 $('#modal').addEventListener('click', e => {
@@ -1017,6 +1073,18 @@ if (new URLSearchParams(location.search).get('teste') === 'goblin') {
   p.board[0].atk = 6; p.board[0].hp = 9; // reforçado para atacar mais de uma vez
   render();
   toast('Teste: Sneack na arena. Clique em LUTAR');
+}
+
+if (new URLSearchParams(location.search).get('teste') === 'evo') {
+  beginGame('h-agua');
+  const p = G.human;
+  p.hand = [makeMinion('agua-bobo'), makeMinion('agua-bobo')];
+  p.board = [makeMinion('fogo-bobo')];
+  G.pool['agua-bobo'] -= 3;
+  p.shop[0] = { uid: UID++, id: 'agua-bobo', frozen: false };
+  p.ether = { fogo: 2, agua: 2, ar: 2, terra: 2 }; p.gold = 6;
+  render();
+  toast('Teste: compre o Bubble da loja para fazer a EVO');
 }
 
 // ───────────────────────────── toque (celular): 1º toque mostra as ações, 2º executa

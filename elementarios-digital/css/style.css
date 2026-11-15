@@ -909,3 +909,114 @@ body:not(.menu)::after { background: radial-gradient(ellipse 75% 60% at 50% 45%,
 .portal { height: 96px; }
 body:not(.menu)::after { background: radial-gradient(ellipse 75% 55% at 50% 40%, transparent 35%, rgba(2,7,6,.6) 100%), linear-gradient(180deg, rgba(2,7,6,.55) 0%, transparent 14%, transparent 55%, rgba(2,7,6,.92) 78%, rgba(2,7,6,.98) 100%); }
 @media (max-height: 900px) { :root { --cw: 106px; } .hand .card { --cw: 80px; } .card .rk { font-size: 32px; bottom: 38px; } }
+
+/* ═════════════════════ v0.8: EVO, congelar, ciclo, livro ═════════════════════ */
+/* EVO: moldura roxa pesada, girando e respirando */
+.card.golden { box-shadow: 0 0 0 1px #000, 0 0 30px -2px rgba(160,80,255,.95), 0 10px 24px rgba(0,0,0,.6); }
+.card .evo-ring { position: absolute; inset: -6px; z-index: 6; pointer-events: none; border-radius: 16px;
+  filter: drop-shadow(0 0 5px #b46bff) drop-shadow(0 0 14px #7a22ff); }
+.card .evo-ring::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 4px;
+  background: conic-gradient(from var(--fa), #5b12d6, #f1dcff 7%, #9b3dff 15%, #2a0670 28%, #c77dff 42%, #fff 50%, #9b3dff 58%, #2a0670 72%, #e0a8ff 86%, #5b12d6);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: flamespin 3s linear infinite; }
+.card .evo-ring::after { content: ''; position: absolute; inset: 6px; border-radius: 11px; box-shadow: inset 0 0 18px rgba(180,107,255,.55); animation: evobreath 2s ease-in-out infinite; }
+@keyframes evobreath { 50% { box-shadow: inset 0 0 32px rgba(205,150,255,.9); } }
+.card .evo-tag { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); z-index: 7; padding: 1px 10px; border-radius: 999px;
+  font: 800 10px var(--display); letter-spacing: .2em; color: #fff; background: linear-gradient(135deg, #d29bff, #6a1bff); box-shadow: 0 0 12px #9b3dff, 0 0 0 1px #f1dcff; }
+.card.evo-up .evo-ring { animation: evoflare 1.3s cubic-bezier(.2,.9,.3,1) .5s both; }
+.card.evo-up .evo-tag { animation: evotag .6s cubic-bezier(.2,.9,.3,1.4) 1.1s both; }
+@keyframes evoflare { 0% { transform: scale(1.6); opacity: 0; filter: drop-shadow(0 0 30px #fff) drop-shadow(0 0 60px #9b3dff); } 60% { transform: scale(.96); opacity: 1; } 100% { transform: none; } }
+@keyframes evotag { from { transform: translateX(-50%) translateY(10px) scale(.3); opacity: 0; } }
+.fx-text.evo { color: #efdcff; text-shadow: 0 0 18px #9b3dff, 0 0 44px #6a1bff, 0 2px 0 #000; }
+
+/* trinca: 2/3 nas suas cartas · EVO brilhando na loja */
+.card .trio { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); z-index: 6; padding: 1px 8px; border-radius: 999px;
+  font: 800 10px var(--display); letter-spacing: .08em; color: #ead6ff; background: rgba(30,8,60,.92); border: 1px solid #9b5cff; white-space: nowrap; }
+.card .trio.ready { color: #fff; background: linear-gradient(135deg, #d29bff, #6a1bff); border-color: #f1dcff; box-shadow: 0 0 12px #9b3dff; }
+.card.trio-ready { box-shadow: 0 0 0 2px #c48bff, 0 0 24px 2px rgba(162,89,255,.85), 0 10px 24px rgba(0,0,0,.6); animation: triopulse 1.3s ease-in-out infinite; }
+@keyframes triopulse { 50% { box-shadow: 0 0 0 2px #efdfff, 0 0 38px 8px rgba(162,89,255,.95), 0 10px 24px rgba(0,0,0,.6); } }
+
+/* congelar */
+.card .ice { position: absolute; inset: 0; z-index: 4; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(circle at 16% 12%, rgba(255,255,255,.8) 0 1.5px, transparent 3px), radial-gradient(circle at 80% 28%, rgba(255,255,255,.7) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 30% 78%, rgba(255,255,255,.6) 0 1px, transparent 2.5px),
+    linear-gradient(160deg, rgba(225,247,255,.36), rgba(140,200,255,.1) 32%, rgba(170,220,255,.04) 62%, rgba(225,248,255,.3));
+  box-shadow: inset 0 0 0 2px rgba(210,242,255,.95), inset 0 0 28px rgba(150,215,255,.85); }
+.card.frozen { filter: saturate(.8) brightness(1.06); }
+.card .frz { position: absolute; top: -10px; right: -8px; z-index: 8; width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 1px solid rgba(190,233,255,.55);
+  background: #04100e; color: #bfe9ff; display: grid; place-items: center; opacity: 0; transition: opacity .15s, transform .15s; cursor: pointer; }
+.card:hover .frz, .card .frz.on { opacity: 1; } .card .frz:hover { transform: scale(1.12); }
+.card .frz svg { width: 14px; height: 14px; }
+.card .frz.on { background: #d6f2ff; color: #06263a; box-shadow: 0 0 14px #9fdcff; }
+.card .cost.down { border-color: #7dffa8; color: #b9ffcf; }
+.counter.frozen { box-shadow: inset 0 0 0 1px rgba(191,233,255,.6), inset 0 0 44px rgba(150,215,255,.22); }
+.btn.ice.on { background: linear-gradient(135deg, #eaf8ff, #8fd3ff); color: #062033; border-color: #eaf8ff; box-shadow: 0 0 16px rgba(150,215,255,.7); }
+.pd-ghost .frz, .pd-ghost .trio { display: none !important; }
+@media (max-width: 760px) { .card .frz { width: 22px; height: 22px; opacity: 1; } .card .trio { top: 16px; font-size: 8px; padding: 0 5px; } }
+
+/* Grimório: carta do Ciclo (desempate) */
+.ciclo { display: grid; grid-template-columns: 76px 1fr; gap: 10px; align-items: start; padding: 8px; margin-bottom: 4px; border-radius: 6px;
+  background: rgba(2,10,9,.55); border: 1px solid rgba(67,240,208,.14); }
+.cy-card { width: 76px; aspect-ratio: 520 / 832; border-radius: 5px; background: center / cover no-repeat; box-shadow: 0 6px 16px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.15); }
+.cy-body > b { display: block; font: 700 12px var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--teal); }
+.cy-body > small { display: block; font-size: 10px; color: var(--mute); margin: 2px 0 6px; line-height: 1.3; }
+.cy-row { display: grid; grid-template-columns: 12px 14px 1fr auto; gap: 6px; align-items: center; padding: 2px 6px; margin-bottom: 2px; border-radius: 3px;
+  font-size: 11px; border-left: 2px solid var(--realm); background: rgba(255,255,255,.03); }
+.cy-row .sym { width: 13px; height: 13px; }
+.cy-row .cy-s { font-size: 13px; color: var(--ink); text-align: center; }
+.cy-row em { font-style: normal; font-size: 9px; color: var(--mute); letter-spacing: .06em; text-transform: uppercase; }
+.cy-row.top { background: linear-gradient(90deg, rgba(255,210,87,.18), transparent); } .cy-row.top em { color: var(--gold); }
+.cy-note { display: block; margin-top: 6px; font-size: 10px; color: var(--mute); }
+
+/* Grimório: lista de lacaios */
+.c-card .c-pct { font: 700 10px var(--display); min-width: 30px; text-align: right; flex: none; }
+.c-card .c-pct.hi { color: #7dffa8; } .c-card .c-pct.mid { color: var(--gold); } .c-card .c-pct.lo { color: #4d6f69; }
+.c-card .c-own { font: 800 9px var(--display); color: #ead6ff; flex: none; padding: 1px 5px; border-radius: 3px; background: rgba(60,20,110,.85); }
+.c-card .c-own.evo { color: #fff; background: linear-gradient(135deg, #d29bff, #6a1bff); box-shadow: 0 0 8px #9b3dff; }
+.c-card.evo { box-shadow: inset 0 0 0 1px #b46bff, 0 0 10px -2px #9b3dff; }
+.bonus.evo { border-color: rgba(180,107,255,.6); } .bonus.evo span { color: #ead6ff; }
+.livro-btn { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin: 2px 0 4px; border-radius: 6px; cursor: pointer; text-align: left;
+  border: 1px solid rgba(241,195,90,.45); background: linear-gradient(135deg, rgba(241,195,90,.16), rgba(2,10,9,.6)); color: var(--gold); }
+.livro-btn svg { width: 26px; height: 26px; flex: none; }
+.livro-btn b { display: block; font: 700 14px var(--display); letter-spacing: .06em; color: #ffe3a1; }
+.livro-btn small { font-size: 10px; color: var(--mute); }
+.livro-btn:hover { box-shadow: 0 0 18px -4px var(--gold); }
+
+/* combate: quem começa */
+.pk .pk-first { display: inline-block; margin: 4px 0 0; padding: 2px 9px; border-radius: 999px; font: 700 10px var(--display); letter-spacing: .05em; color: #2a1a02;
+  background: linear-gradient(135deg, #ffe9b0, var(--gold)); box-shadow: 0 0 12px rgba(241,195,90,.6); }
+
+/* visor da carta: livro aberto (ilustração | carta) */
+#inspect { left: 10px; top: 10px; transform: none; width: var(--bw, 700px); height: calc(var(--bw, 700px) / 1.5); border-radius: 0; overflow: visible;
+  background: none; box-shadow: none; filter: drop-shadow(0 30px 50px rgba(0,0,0,.75)); animation: bookin .18s ease-out; }
+@keyframes bookin { from { opacity: 0; transform: translateY(10px) scale(.97); } }
+.bk { position: absolute; inset: 0; background: url('../assets/ui/livro.webp') center / 100% 100% no-repeat; color: #3b2210; }
+.bk-gem { position: absolute; width: calc(var(--bw) * .055); height: calc(var(--bw) * .055); transform: translate(-50%, -50%); border-radius: 50%;
+  background: radial-gradient(circle, #fff 0, var(--realm) 30%, transparent 70%); mix-blend-mode: screen; animation: gemglow 1.6s ease-in-out infinite; }
+@keyframes gemglow { 50% { transform: translate(-50%, -50%) scale(1.5); opacity: .65; } }
+.bk-art { position: absolute; left: 23%; top: 22%; width: 19.6%; height: 41.8%; border-radius: calc(var(--bw) * .008); background: center / cover no-repeat #1a0f06;
+  box-shadow: inset 0 0 calc(var(--bw) * .02) rgba(0,0,0,.55), 0 0 0 1px rgba(70,40,10,.6); }
+.bk-art.spell { display: grid; place-items: center; background: radial-gradient(circle, #3b2a7a, #0b0620 75%); color: var(--eter); }
+.bk-art.spell svg { width: 70%; height: 70%; filter: drop-shadow(0 0 12px var(--eter)); }
+.bk-bar { position: absolute; left: 54.8%; width: 25.2%; height: 4.6%; display: flex; align-items: center; justify-content: center; gap: .35em;
+  white-space: nowrap; overflow: hidden; font: 700 calc(var(--bw) * .0175) var(--serif); color: #4a2a12; }
+.bk-bar .sym, .bk-bar svg { width: 1.15em; height: 1.15em; flex: none; }
+.bk-bar.b1 { top: 19.9%; font: 700 calc(var(--bw) * .027) var(--display); color: #2a1404; }
+.bk-bar.b2 { top: 26.9%; } .bk-bar.b3 { top: 33.9%; } .bk-bar.b4 { top: 40.8%; font-family: Sora, sans-serif; font-weight: 600; font-size: calc(var(--bw) * .0125); color: #5a3a1a; }
+.bk-evo { font-style: normal; font-size: .5em; padding: .15em .6em; border-radius: 99px; color: #fff; background: linear-gradient(135deg, #d29bff, #6a1bff); letter-spacing: .12em; margin-left: .3em; }
+.bk-man { color: #a3261a; }
+.bk-c { position: absolute; top: 47.6%; width: 3.9%; height: 5.86%; display: grid; place-items: center; }
+.bk-c.c1 { left: 56.8%; } .bk-c.c2 { left: 65.2%; } .bk-c.c3 { left: 73.6%; }
+.bk-a, .bk-h { position: relative; display: grid; place-items: center; width: 100%; height: 100%; }
+.bk-a svg, .bk-h svg { position: absolute; inset: 8%; width: 84%; height: 84%; }
+.bk-a svg { color: #9a6d1c; } .bk-h svg { color: #b3263a; }
+.bk-a b, .bk-h b { position: relative; font: 800 calc(var(--bw) * .022) var(--display); color: #fff; text-shadow: 0 1px 2px #000, 0 0 6px #000; }
+.bk-rk { font: 800 calc(var(--bw) * .028) var(--display); color: #2a1404; }
+.bk-box { position: absolute; left: 54.4%; top: 57.3%; width: 27.4%; height: 11.6%; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: .3em;
+  font: 700 calc(var(--bw) * .0185)/1.22 var(--serif); color: #2a1404; text-align: center; }
+.bk-box p { margin: 0; }
+.bk-box .bk-evop { color: #5a1a9a; font-size: .84em; }
+.bk-box .bk-small { font: 500 .66em/1.3 Sora, sans-serif; color: #6a4a2a; }
+
+/* o Grimório só desliza quando abre (não a cada clique) */
+.grim:not(.anim) { animation: none; }

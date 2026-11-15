@@ -81,7 +81,9 @@ Bônus com 2, 4 e 6 cartas do mesmo reino no tabuleiro:
 
 **Ciclo Elemental:** Fogo → Água → Ar → Terra → Fogo. A carta que vem antes no ciclo causa **+1 de dano** contra a seguinte.
 
-**Manilha da rodada (o "Vira"):** antes de cada recrutamento, é revelado um arquétipo como Manilha. Todas as cartas desse arquétipo ganham +2/+2 em combate naquela rodada. Ela é sempre anunciada com antecedência, pra todo mundo poder ler e se adaptar.
+**Manilha da rodada (o "Vira"):** antes de cada recrutamento, é revelado um arquétipo como Manilha. Todas as cartas desse arquétipo ganham +2/+2 em combate naquela rodada e **custam sempre 3** na loja. Ela é sempre anunciada com antecedência, pra todo mundo poder ler e se adaptar.
+
+**Quem começa o combate (desempate do truco):** a Manilha decide. Os reinos viram naipes a partir do reino do Vira, seguindo o ciclo: o reino do Vira é **Paus** (o mais forte), o seguinte é Copas, depois Espadas, e o que vem antes do Vira é **Ouros** (o mais fraco). Exemplo: Vira de Água → Água é Paus, Ar é Copas, Terra é Espadas e Fogo é Ouros. Ataca primeiro quem tem a Manilha de naipe mais forte na arena. Sem Manilha (ou com o mesmo naipe), vale a Sequência, depois quem tem mais cartas, depois a sorte. A carta do Ciclo fica no Grimório, na aba Combinações, com a ordem da rodada.
 
 ## 6. Éter e Feitiços
 
@@ -113,9 +115,9 @@ Fica num painel lateral que pode ser recolhido e está **sempre visível durante
 - **Valor esperado da renovação:** "você tem 18% de ver alguma carta da sua build nesta renovação".
 - Cores: verde acima de 30%, amarelo de 10 a 30% e cinza abaixo de 10%.
 
-### 7.3 Fixador de cartas
-- **Fixar 📌 uma carta específica** da loja (o BG só congela a loja inteira): ela fica pra próxima rodada.
-- A 1ª fixação de cada rodada é grátis. As seguintes custam 1 de ouro.
+### 7.3 Congelar
+- **Congelar a Taverna** (botão ou tecla F): grátis, a loja inteira fica pra próxima rodada. Renovar descongela.
+- **Congelar uma carta específica** (❄ na carta): custa **1 Éter do reino dela** e sobrevive à renovação. Descongelar na mesma rodada devolve o Éter.
 - **Lista de desejos:** marque cartas no tracker. Quando uma aparecer na loja, ela pisca, e a probabilidade dela ganha destaque.
 
 ### 7.4 Contador de ações (alimenta o replay)
@@ -135,7 +137,7 @@ Mostra na rodada atual o ouro gasto e o desperdiçado, as compras, vendas, queim
 | Jogadores | 8 (você + 7 bots) |
 | Vida do herói | 30 |
 | Ouro | começa com 3, +1 por rodada, máximo 10 |
-| Lacaio | **2 de ouro** (teste A/B: níveis 6 e 7 custam 3) |
+| Lacaio | **2 de ouro**, fixo (o preço nem aparece na carta). A Manilha custa **3** |
 | Renovar a loja | 1 |
 | Vender | +1 de ouro / Queimar: +1 Éter |
 | Tabuleiro | 7 vagas · mão: 10 |
@@ -143,7 +145,7 @@ Mostra na rodada atual o ouro gasto e o desperdiçado, as compras, vendas, queim
 | Combate | ~10s, acelerado |
 | Dano ao perder | nível da Taverna + níveis das cartas que sobraram (teto de 5 até a rodada 4) |
 
-**Tripla:** 3 cópias da **mesma carta** (mesmo arquétipo e mesmo reino) viram a versão dourada (atributos ×2, efeito ×2) e dão uma **Descoberta** de um nível acima.
+**EVO (lacaio evoluído):** 3 cópias da **mesma carta** (mesmo arquétipo e mesmo reino) viram 1 EVO na hora: atributos ×2 e o efeito dobra de força (Grito de Guerra +1/+1 vira +2/+2, 3 de dano vira 6, invoca 3/3 vira 6/6). Moldura roxa animada e uma **Descoberta** de um nível acima. Na loja, a carta que fecha a trinca brilha em roxo; nas suas, aparece 2/3.
 
 ## 10. Heróis: os Feiticeiros
 
@@ -179,8 +181,8 @@ O efeito de cada carta é **tribo × reino**. Por exemplo: o Ladino de Fogo (Ign
 1. **Manilha na loja:** toda renovação tem 1 vaga garantida pro arquétipo da Manilha.
 2. **Vender e queimar:** duas zonas de arrastar, 💰 e ✦.
 3. **Diluição:** a partir do nível 5, os níveis 1 e 2 **não somem**, mas têm o peso reduzido (aparecem com 25% da chance normal). Ficam disponíveis pra completar triplas e pras builds de Bobo e Goblin.
-4. **Preço disputado:** uma carta custa +1 quando outro jogador já tem cópias dela.
-5. **Tripla manual:** você pode segurar as 3 cópias e só juntar quando quiser, com o botão "Fundir".
+4. **Preço fixo:** lacaio 2, Manilha 3. (O "preço disputado" saiu: com o custo escondido, o jogador pagaria um valor que não vê.)
+5. **EVO automática:** 3 cópias viram EVO assim que você junta a terceira.
 
 ## 13. Economia como mercado: escalar com dividendos
 
