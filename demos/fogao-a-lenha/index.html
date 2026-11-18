@@ -38,7 +38,7 @@ nav a{text-decoration:none;position:relative;padding:4px 0}
 nav a:after{content:"";position:absolute;left:0;right:100%;bottom:0;height:2px;background:var(--laranja);transition:.25s}
 nav a:hover{color:var(--laranja)}nav a:hover:after{right:0}
 .risco{display:block;width:100%;height:14px}
-@media(max-width:760px){nav{display:none}.marca img{height:54px}}
+@media(max-width:760px){.marca img{height:50px}}
 
 .bt{display:inline-flex;align-items:center;gap:10px;padding:14px 26px;font-weight:700;text-decoration:none;border:2px solid var(--marrom);transition:.2s}
 .bt.cheio{background:var(--vinho);border-color:var(--vinho);color:#fff}
@@ -167,6 +167,43 @@ footer .logo img{height:56px;mix-blend-mode:multiply}
 .rev{opacity:0;transform:translateY(24px);transition:opacity .8s,transform .8s}
 .rev.vis{opacity:1;transform:none}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.rev{opacity:1;transform:none}}
+
+.almoco{padding:64px 0}
+.quadro{border:1px solid var(--marrom-3);background:var(--marrom-2);padding:32px;display:grid;grid-template-columns:1fr 1.3fr auto;gap:32px;align-items:center;margin-top:24px}
+.destaques{list-style:none;display:grid;gap:14px}
+.destaques li{display:flex;align-items:center;gap:12px;font-family:Alegreya,serif;font-weight:700;font-size:1.3rem}
+.destaques .ic{width:30px;height:30px;color:var(--brasa)}
+.quadro p{color:#d8c6ad}
+.nav-bt{background:var(--vinho);color:#fff!important;padding:8px 16px!important}
+.nav-bt:after{display:none}
+@media(max-width:860px){.quadro{grid-template-columns:1fr;gap:20px;padding:24px}}
+@media(max-width:760px){
+  body{font-size:17px}
+  section{padding:56px 0}
+  header .w{flex-direction:column;align-items:stretch;gap:6px;padding-top:6px;padding-bottom:4px}
+  .marca{align-self:center}
+  nav{display:flex;gap:18px;overflow-x:auto;white-space:nowrap;font-size:.95rem;padding-bottom:4px;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  .faixa .w{justify-content:center;font-size:.8rem}
+  .faixa span{display:none}
+  .hero{padding-top:24px}
+  .hero p{margin:16px 0 22px}
+  .hero .acoes .bt{flex:1;justify-content:center;padding:12px}
+  .fogao{height:260px;box-shadow:8px 8px 0 var(--laranja)}
+  .fachada{height:300px;margin-top:24px}
+  .fachada .w{bottom:20px}
+  .cardapio .lado img{height:180px}
+  .mural{columns:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+  .mural figure{margin:0;aspect-ratio:1}
+  .mural img{height:100%;object-fit:cover}
+  .mural figure:nth-child(1),.mural figure:nth-child(8){grid-column:span 2;grid-row:span 2}
+  .mural figcaption{display:none}
+  .card{width:280px;padding:20px}
+  .nota b{font-size:3rem}
+  .mapa{grid-template-rows:280px 160px}
+  .mapa iframe{min-height:0}
+  footer .w{flex-direction:column;text-align:center}
+}
 </style>
 </head>
 <body>
@@ -192,7 +229,7 @@ footer .logo img{height:56px;mix-blend-mode:multiply}
 <header>
   <div class="w">
     <a class="marca" href="#"><img src="img/logo.webp" alt="Restaurante Fogão a Lenha · comida mineira"></a>
-    <nav><a href="#almoco">O almoço</a><a href="#cardapio">Cardápio</a><a href="#fotos">Fotos</a><a href="#avaliacoes">Avaliações</a><a href="#visite">Como chegar</a></nav>
+    <nav><a href="#almoco">O almoço</a><a href="#cardapio">Cardápio</a><a href="#fotos">Fotos</a><a href="#avaliacoes">Avaliações</a><a href="#visite">Como chegar</a><a class="nav-bt" href="tel:+554130165959">Reservar</a></nav>
   </div>
   <svg class="risco" viewBox="0 0 1200 14" preserveAspectRatio="none"><path d="M0 9 Q600 0 1200 6" stroke="#2a1410" stroke-width="3" fill="none"/><path d="M0 13 Q600 5 1200 11" stroke="#b5470f" stroke-width="2" fill="none"/></svg>
 </header>
@@ -224,11 +261,15 @@ footer .logo img{height:56px;mix-blend-mode:multiply}
 
 <section class="almoco" id="almoco"><div class="w">
   <h2 class="titulo rev">Como funciona o almoço</h2>
-  <p class="sub rev">Simples e sem pressa. Quem vem uma vez costuma voltar na mesma semana.</p>
-  <div class="passos">
-    <div class="passo rev"><span class="n">um</span><svg class="ic"><use href="#i-comanda"/></svg><h3>Pegue a comanda</h3><p>Ela fica com você na mesa. A gente anota tudo ali.</p></div>
-    <div class="passo rev"><span class="n">dois</span><svg class="ic"><use href="#i-panela"/></svg><h3>Livre ou por quilo</h3><p>Pratos quentes direto do fogão, massas e um buffet de saladas só dele. Você escolhe como paga.</p></div>
-    <div class="passo rev"><span class="n">três</span><svg class="ic"><use href="#i-doce"/></svg><h3>Sobremesa por nossa conta</h3><p>No fim do almoço, um docinho de cortesia. Tradição da casa.</p></div>
+  
+  <div class="quadro rev">
+    <ul class="destaques">
+      <li><svg class="ic"><use href="#i-comanda"/></svg>Pegue a comanda</li>
+      <li><svg class="ic"><use href="#i-panela"/></svg>Livre ou por quilo</li>
+      <li><svg class="ic"><use href="#i-doce"/></svg>Sobremesa por nossa conta</li>
+    </ul>
+    <p>A comanda fica com você na mesa e a gente anota tudo ali. Você monta o prato no buffet, com pratos quentes direto do fogão, massas e saladas, e escolhe se paga o livre ou por quilo. No fim, a sobremesa é cortesia da casa.</p>
+    <a class="bt cheio" href="#cardapio">Ver o cardápio</a>
   </div>
 </div></section>
 
